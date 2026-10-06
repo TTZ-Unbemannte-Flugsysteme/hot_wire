@@ -1,19 +1,21 @@
 """
 Fit the hot-wire calibration coefficients from wind tunnel measurements and save them as
-the calibration file of the sensor:  calibration/<sensor serial number>.json
+the calibration file of the sensor:  sensor_coefficients/<sensor serial number>.json
 
 What this script does:
-    1. Loads all CSV files in  windtunnel_data/<sensor serial number>/
+    1. Loads all CSV files in  calibration_data/<sensor serial number>/
        The wind tunnel speed is read from the file name, e.g. "..._15ms.csv" = 15 m/s.
     2. Fits the hot-wire formula of the SVMtec manual (see function 'model') to voltage vs. speed.
-       Only a, b and e are fitted. m and Uoffset come from calibration/daq_inputs.json, Ts is a
+       Only a, b and e are fitted. m and Uoffset come from sensor_coefficients/daq_inputs.json, Ts is a
        fixed setting. Every 2nd sample is used for fitting ("training"), the rest for checking ("test").
     3. Calculates error margins: standard errors of a, b and e, a "leave one speed out" check,
        and the velocity error at every speed.
-    4. Saves the result in calibration/<sensor>.json together with a description of the data
+    4. Saves the result in sensor_coefficients/<sensor>.json together with a description of the data
        (file names, speeds, numbers of samples, SHA-256 hashes). An older calibration file of
-       the sensor is first moved to calibration/archive/. read_hotwire.py then uses the new file.
+       the sensor is first moved to sensor_coefficients/archive/. read_hotwire.py then uses the new file.
     5. Plots the fit (with the error vs. voltage) and the residuals.
+
+Settings: user_settings.json, section "calibration_fit" (see README.md).
 
 Requirements: numpy, pandas, scipy, matplotlib
 """
@@ -29,43 +31,38 @@ import pandas as pd
 import scipy
 from scipy.optimize import curve_fit
 
-from calibration_file import (DAQ_INPUTS_FILE, FORMAT_VERSION, FORMULA_ID, FORMULA_TEXT,
-                              combined_sha256, file_sha256, load_daq_input, save_calibration)
+from calibration_file import (CALIBRATION_DATA_DIR, DAQ_INPUTS_FILE, FORMAT_VERSION, FORMULA_ID,
+                              FORMULA_TEXT, combined_sha256, file_sha256, load_daq_input,
+                              save_calibration)
+from settings_file import PROJECT_DIR, load_settings, values_in_order
 
 
 # =============================================================================
-# USER SETTINGS
+# USER SETTINGS - they are in user_settings.json (section "calibration_fit"), see README.md
 # =============================================================================
 
-BRIDGE_SENSOR_SN = "2025-6131"   # Sensor to calibrate (= name of the data sub-folder)
-MEASUREMENT_COLUMN = "ai1"       # CSV column (= DAQ input) that contains the hot-wire voltage
-FLUID_TEMPERATURE = 20.0         # Air temperature Tf during the wind tunnel test [°C]
+SETTINGS = load_settings("calibration_fit")
+
+BRIDGE_SENSOR_SN = SETTINGS["sensor"]               # Sensor to calibrate (= name of the data sub-folder)
+MEASUREMENT_COLUMN = SETTINGS["voltage_column"]     # CSV column (= DAQ input) with the hot-wire voltage
+FLUID_TEMPERATURE = SETTINGS["air_temperature_C"]   # Air temperature Tf during the wind tunnel test [°C]
+SAVE_CALIBRATION = SETTINGS["save_calibration"]     # Save the result as sensor_coefficients/<sensor>.json
+CALIBRATION_NOTE = SETTINGS["calibration_note"]     # Optional remark stored in the calibration file
+N_ERROR_BINS = SETTINGS["plot_error_bins"]          # Voltage bins of the "mean error" line in the plot
 
 # Sensor temperature Ts [°C]. It is fixed, because wind tunnel data at one air temperature
-# cannot determine it (only b / (Ts - Tf) matters). 172.289596 is the value of the earlier
-# 2025-6131 entry. Use the "Drahttemperatur (korr.)" of the SVMtec calibration sheet if you have it.
-SENSOR_TEMPERATURE = 172.289596
+# cannot determine it (only b / (Ts - Tf) matters). None = no Ts known for this sensor.
+SENSOR_TEMPERATURE = SETTINGS["sensor_temperatures_C"].get(BRIDGE_SENSOR_SN)
 
-SAVE_CALIBRATION = True   # Save the result as calibration/<sensor>.json (an older file is archived)
-CALIBRATION_NOTE = ""     # Optional remark that is stored in the calibration file
+PARAMETER_NAMES = ["a", "b", "e"]   # The fitted coefficients, in this order
+INITIAL_GUESS = values_in_order(SETTINGS, "initial_guess", PARAMETER_NAMES)   # Start values of the fit
+LOWER_BOUNDS = values_in_order(SETTINGS, "lower_bounds", PARAMETER_NAMES)     # Search range of the fit
+UPPER_BOUNDS = values_in_order(SETTINGS, "upper_bounds", PARAMETER_NAMES)
 
-N_ERROR_BINS = 20         # Number of voltage bins for the "mean error vs. voltage" line in the plot
+DATA_DIR = CALIBRATION_DATA_DIR / BRIDGE_SENSOR_SN
+MANUAL_FILE = PROJECT_DIR / "docs" / "Hitzdraht_doku.pdf"   # Source of the formula (its hash is stored)
 
-PROJECT_DIR = Path(__file__).resolve().parent
-DATA_DIR = PROJECT_DIR / "windtunnel_data" / BRIDGE_SENSOR_SN
-MANUAL_FILE = PROJECT_DIR / "Hitzdraht_doku.pdf"   # Source of the formula (its hash is stored)
-
-
-# =============================================================================
-# FIT SETTINGS - normally there is no need to change these
-# =============================================================================
-
-PARAMETER_NAMES = ["a", "b", "e"]      # The fitted coefficients, in this order
-INITIAL_GUESS = [-0.665, 105, 2.42]    # Starting values of the fit
-LOWER_BOUNDS = [-10.0, 0.0, 1.0]       # Wide, physically sensible search range
-UPPER_BOUNDS = [10.0, 1000.0, 6.0]
-
-# Gain m and offset Uoffset of the DAQ input, from calibration/daq_inputs.json
+# Gain m and offset Uoffset of the DAQ input, from sensor_coefficients/daq_inputs.json
 DAQ_INPUT = load_daq_input(MEASUREMENT_COLUMN)
 
 # Short explanations that are stored with the statistics in the calibration file
@@ -202,15 +199,21 @@ def combine_files(files, voltages_by_file):
 
 def check_settings(lower, upper, guess):
     """Stop with a clear message if the settings do not make sense."""
+    if SENSOR_TEMPERATURE is None:
+        raise ValueError(f"No sensor temperature Ts for sensor {BRIDGE_SENSOR_SN}: add it to "
+                         f'"sensor_temperatures_C" in user_settings.json.')
     if SENSOR_TEMPERATURE <= FLUID_TEMPERATURE:
-        raise ValueError("SENSOR_TEMPERATURE must be higher than FLUID_TEMPERATURE.")
+        raise ValueError(f"The sensor temperature Ts ({SENSOR_TEMPERATURE} °C) must be higher than "
+                         f'"air_temperature_C" ({FLUID_TEMPERATURE} °C) in user_settings.json.')
 
     for name, low, high, start in zip(PARAMETER_NAMES, lower, upper, guess):
         if low >= high:
-            raise ValueError(f"Bounds for '{name}' are wrong: lower ({low}) >= upper ({high}).")
+            raise ValueError(f"Bounds for '{name}' are wrong: lower ({low}) >= upper ({high}). "
+                             f'Change "lower_bounds" / "upper_bounds" in user_settings.json.')
         if not low <= start <= high:
             raise ValueError(f"Initial guess for '{name}' ({start}) is outside the bounds "
-                             f"[{low}, {high}]. Change INITIAL_GUESS, LOWER_BOUNDS or UPPER_BOUNDS.")
+                             f'[{low}, {high}]. Change "initial_guess", "lower_bounds" or '
+                             f'"upper_bounds" in user_settings.json.')
 
 
 def warn_if_at_bounds(params, lower, upper):
@@ -219,7 +222,8 @@ def warn_if_at_bounds(params, lower, upper):
         margin = 1e-6 * (high - low)
         if value - low < margin or high - value < margin:
             print(f"WARNING: '{name}' = {value:.6f} is at its search limit [{low}, {high}]. "
-                  f"The result is probably not the best fit; widen LOWER_BOUNDS / UPPER_BOUNDS.")
+                  f'The result is probably not the best fit; widen "lower_bounds" / '
+                  f'"upper_bounds" in user_settings.json.')
 
 
 # =============================================================================
@@ -355,7 +359,8 @@ def build_calibration(coefficients, statistics, file_descriptions, n_train, n_te
             "fixed_coefficients": {
                 "m": f"input {MEASUREMENT_COLUMN} in {relative_name(DAQ_INPUTS_FILE)}",
                 "Uoffset": f"input {MEASUREMENT_COLUMN} in {relative_name(DAQ_INPUTS_FILE)}",
-                "Ts": "SENSOR_TEMPERATURE setting (cannot be fitted from data at one air temperature)",
+                "Ts": "sensor_temperatures_C in user_settings.json (cannot be fitted from data at one "
+                      "air temperature)",
             },
             "fluid_temperature_C": FLUID_TEMPERATURE,
             "initial_guess": INITIAL_GUESS,
@@ -495,7 +500,7 @@ def main():
         if archived:
             print(f"The previous calibration file was moved to {relative_name(archived)}")
     else:
-        print("\nSAVE_CALIBRATION = False: no calibration file was written.")
+        print('\n"save_calibration" is false in user_settings.json: no calibration file was written.')
 
     # 6. Plots
     plot_fit_with_error_axis(u_train, w_train, u_test, w_test, params)

@@ -4,13 +4,13 @@ Read a hot-wire sensor through a National Instruments (NI) DAQ device.
 What this script does:
     1. Reads the bridge voltage of the hot-wire for MEASUREMENT_TIME seconds.
     2. Converts every voltage sample into an air velocity (m/s) using the
-       calibration file of the selected sensor: calibration/<sensor>.json
+       calibration file of the selected sensor: sensor_coefficients/<sensor>.json
        (made by find_hotwire_coefficient.py, see README.md).
-    3. Saves everything to a CSV file in OUTPUT_DIR (vortifer_data/).
+    3. Saves everything to a CSV file in the output folder (vortifer_data/).
     4. Shows a plot of voltage and velocity over time.
 
 How to use it:
-    - Change the values in the "USER SETTINGS" section below.
+    - Change the settings in user_settings.json (section "read_hotwire"), see README.md.
     - Run the script. Press Ctrl+C to stop early; the data recorded so far
       is still saved.
 
@@ -27,40 +27,26 @@ import numpy as np
 import nidaqmx
 from nidaqmx.constants import TerminalConfiguration
 
-from calibration_file import load_calibration
+from calibration_file import CALIBRATION_DIR, load_calibration
+from settings_file import PROJECT_DIR, load_settings
 
 
 # =============================================================================
-# USER SETTINGS - change these before each measurement
+# USER SETTINGS - they are in user_settings.json (section "read_hotwire"), see README.md
 # =============================================================================
 
-# Serial number of the hot-wire bridge sensor. Its coefficients are read from
-# the calibration file calibration/<serial number>.json
-BRIDGE_SENSOR_SN = "2025-6131"  # "2025-6104", "2025-6121", "2025-6139", "2025-6131"
+SETTINGS = load_settings("read_hotwire")
 
-# Short description of the test. It is added to the output file name.
-# Example: "40p_100s_cw" = 40 % throttle, 100 s run, clockwise rotation
-TEST_LABEL = "40p_100s_cw"
-
-# Folder for the output file (it is created if it does not exist). Wind tunnel files for a
-# new calibration are moved to windtunnel_data/<sensor>/ afterwards, see README.md.
-OUTPUT_DIR = Path(__file__).resolve().parent / "vortifer_data"
-
-MEASUREMENT_TIME = 120  # How long to record [s]
-SAMPLE_RATE = 1000      # Requested samples per second [Hz] (see note in record_samples)
-
-# Air (fluid) temperature [°C]. The temperature sensor read-out is not working
-# yet, so the value is entered by hand. Measure it in the room before testing.
-FLUID_TEMPERATURE = 20
-
-# NI DAQ settings
-DEVICE = "Dev1"         # Name of the DAQ device (see NI MAX)
-CHANNELS = "ai1:1"      # Channels to read, e.g. "ai1", "ai1:3" or "ai1, ai4"
-
-# Which of the channels above is the hot-wire? 0 = the first channel in CHANNELS.
-HOTWIRE_CHANNEL_INDEX = 0
-
-SHOW_PLOT = True        # Show a plot after the measurement?
+BRIDGE_SENSOR_SN = SETTINGS["sensor"]                       # Its calibration: sensor_coefficients/<sensor>.json
+TEST_LABEL = SETTINGS["test_label"]                         # Added to the output file name
+OUTPUT_DIR = PROJECT_DIR / SETTINGS["output_folder"]        # Folder for the output file
+MEASUREMENT_TIME = SETTINGS["measurement_time_s"]           # How long to record [s]
+SAMPLE_RATE = SETTINGS["sample_rate_Hz"]                    # Requested samples per second (see record_samples)
+FLUID_TEMPERATURE = SETTINGS["air_temperature_C"]           # Air temperature Tf [°C], entered by hand
+DEVICE = SETTINGS["daq_device"]                             # Name of the DAQ device (see NI MAX)
+CHANNELS = SETTINGS["daq_channels"]                         # Channels to read, e.g. "ai1" or "ai1:3"
+HOTWIRE_CHANNEL_INDEX = SETTINGS["hotwire_channel_index"]   # 0 = the first channel in CHANNELS
+SHOW_PLOT = SETTINGS["show_plot"]                           # Show a plot after the measurement?
 
 
 # =============================================================================
@@ -83,7 +69,7 @@ def voltage_to_temp(voltage, current=0.002, r0=100.0):
 
 def get_calibration(sensor_sn):
     """
-    Read the calibration file of the sensor (calibration/<sensor>.json) and print where it comes from.
+    Read the calibration file of the sensor (sensor_coefficients/<sensor>.json) and print where it comes from.
 
     Returns the content of the file; the coefficients are in calibration["coefficients"].
     """
@@ -91,7 +77,7 @@ def get_calibration(sensor_sn):
     source = calibration.get("source_data") or {}
     statistics = calibration.get("statistics") or {}
 
-    print(f"Calibration file: calibration/{sensor_sn}.json (created {calibration.get('created')})")
+    print(f"Calibration file: {CALIBRATION_DIR.name}/{sensor_sn}.json (created {calibration.get('created')})")
     if source.get("dataset_sha256"):
         low, high = source["speed_range_m_per_s"]
         print(f"  fitted from {source['number_of_files']} files in {source['folder']}, "
@@ -294,8 +280,8 @@ def main():
     channel_names = expand_channels(CHANNELS)
 
     if not 0 <= HOTWIRE_CHANNEL_INDEX < len(channel_names):
-        raise ValueError(f"HOTWIRE_CHANNEL_INDEX = {HOTWIRE_CHANNEL_INDEX}, but only "
-                         f"{len(channel_names)} channel(s) are read: {channel_names}")
+        raise ValueError(f'"hotwire_channel_index" in user_settings.json is {HOTWIRE_CHANNEL_INDEX}, '
+                         f"but only {len(channel_names)} channel(s) are read: {channel_names}")
 
     print(f"Sensor: {BRIDGE_SENSOR_SN}")
     print(f"Fluid temperature Tf = {FLUID_TEMPERATURE} °C")

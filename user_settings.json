@@ -1,0 +1,31 @@
+{
+  "_help": "Settings of all scripts. Every setting is explained in README.md, section Settings. Keys that start with _ are comments.",
+
+  "read_hotwire": {
+    "_help": "Used by read_hotwire.py. Change test_label before every run.",
+    "sensor": "2025-6131",
+    "test_label": "data_file_label",
+    "air_temperature_C": 20,
+    "measurement_time_s": 120,
+    "sample_rate_Hz": 1000,
+    "output_folder": "output_folder_name",
+    "daq_device": "Dev1",
+    "daq_channels": "ai1:1",
+    "hotwire_channel_index": 0,
+    "show_plot": true
+  },
+
+  "calibration_fit": {
+    "_help": "Used by find_hotwire_coefficient.py.",
+    "sensor": "2025-6104",
+    "voltage_column": "ai1",
+    "air_temperature_C": 20.0,
+    "sensor_temperatures_C": {"2025-6131": 172.289596, "2025-6104": 221},
+    "save_calibration": true,
+    "calibration_note": "",
+    "initial_guess": {"a": -0.665, "b": 105, "e": 2.42},
+    "lower_bounds": {"a": -10.0, "b": 0.0, "e": 1.0},
+    "upper_bounds": {"a": 10.0, "b": 1000.0, "e": 6.0},
+    "plot_error_bins": 20
+  }
+}

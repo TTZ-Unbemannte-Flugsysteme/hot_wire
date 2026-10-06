@@ -1,0 +1,306 @@
+{
+  "format_version": 1,
+  "sensor": "2025-6104",
+  "created": "2026-10-06 13:37:12",
+  "formula": "svmtec_eq2",
+  "formula_text": "v = (a + b * U_br^2 / (Ts - Tf))^e  with  U_br = U_measured / m + Uoffset  (SVMtec manual Hitzdraht_doku.pdf, section 6.5, eq. 2 and 3)",
+  "coefficients": {
+    "a": -0.399071,
+    "b": 83.819945,
+    "e": 2.688932,
+    "m": 3.985,
+    "Uoffset": 1.498,
+    "Ts": 221
+  },
+  "fit": {
+    "script": "find_hotwire_coefficient.py",
+    "script_sha256": "7bfda2f01a049634222674e06b88d38f232f6dfbf6c5c08a83f4dc8739dbc8c5",
+    "method": "scipy.optimize.curve_fit (bounded least squares on the velocity)",
+    "fitted_coefficients": [
+      "a",
+      "b",
+      "e"
+    ],
+    "fixed_coefficients": {
+      "m": "input ai1 in sensor_coefficients/daq_inputs.json",
+      "Uoffset": "input ai1 in sensor_coefficients/daq_inputs.json",
+      "Ts": "SENSOR_TEMPERATURE setting (cannot be fitted from data at one air temperature)"
+    },
+    "fluid_temperature_C": 20.0,
+    "initial_guess": [
+      -0.665,
+      105,
+      2.42
+    ],
+    "lower_bounds": [
+      -10.0,
+      0.0,
+      1.0
+    ],
+    "upper_bounds": [
+      10.0,
+      1000.0,
+      6.0
+    ],
+    "training_samples": 1044,
+    "test_samples": 1044,
+    "split": "training = every 2nd sample (even sample numbers), test = the remaining samples"
+  },
+  "source_data": {
+    "description": "Wind tunnel recordings. The reference speed is the nominal tunnel speed in the file name (..._<speed>ms.csv).",
+    "folder": "calibration_data/2025-6104",
+    "voltage_column": "ai1",
+    "number_of_files": 6,
+    "total_samples": 2088,
+    "speed_range_m_per_s": [
+      5.0,
+      30.0
+    ],
+    "voltage_range_V": [
+      3.21784,
+      6.29275
+    ],
+    "dataset_sha256": "39eb44a1fb5c592ab1a06634d2e435b43aa6619bfccfd5a36e20983249612230",
+    "files": [
+      {
+        "file": "calibration_data/2025-6104/20251125_101528_hotwire_measurement_windtunnel_0deg_aoa_2025-6104_10ms.csv",
+        "speed_m_per_s": 10.0,
+        "samples": 349,
+        "sha256": "386e52193934079ea00c2c4394d2d0ccd8dfb38581241c1a5b4507c2d6f34eba",
+        "voltage_mean_V": 4.26732,
+        "voltage_std_V": 0.0036274,
+        "voltage_min_V": 4.25815,
+        "voltage_max_V": 4.27821,
+        "first_timestamp": "2025:11:25:10:15:29.3398",
+        "duration_s": 10.0
+      },
+      {
+        "file": "calibration_data/2025-6104/20251125_101650_hotwire_measurement_windtunnel_0deg_aoa_2025-6104_15ms.csv",
+        "speed_m_per_s": 15.0,
+        "samples": 341,
+        "sha256": "ac2b74b9865a50e8a0deac81d25dada01856e114ce95bf9e7deefc43ba5a26f7",
+        "voltage_mean_V": 4.95699,
+        "voltage_std_V": 0.00330303,
+        "voltage_min_V": 4.94731,
+        "voltage_max_V": 4.96507,
+        "first_timestamp": "2025:11:25:10:16:50.7493",
+        "duration_s": 10.01
+      },
+      {
+        "file": "calibration_data/2025-6104/20251125_101814_hotwire_measurement_windtunnel_0deg_aoa_2025-6104_20ms.csv",
+        "speed_m_per_s": 20.0,
+        "samples": 365,
+        "sha256": "ca4e3433e758778cf6b1863e534769e69472d279e95178b66b5af7dc875e1b23",
+        "voltage_mean_V": 5.48622,
+        "voltage_std_V": 0.00367235,
+        "voltage_min_V": 5.47306,
+        "voltage_max_V": 5.49673,
+        "first_timestamp": "2025:11:25:10:18:15.7691",
+        "duration_s": 10.01
+      },
+      {
+        "file": "calibration_data/2025-6104/20251125_101938_hotwire_measurement_windtunnel_0deg_aoa_2025-6104_25ms.csv",
+        "speed_m_per_s": 25.0,
+        "samples": 351,
+        "sha256": "0462646540baab72a2e6923fa1d8d04b57ec87e7af55f4b8013d97efee27aa83",
+        "voltage_mean_V": 5.92026,
+        "voltage_std_V": 0.00378847,
+        "voltage_min_V": 5.91003,
+        "voltage_max_V": 5.93075,
+        "first_timestamp": "2025:11:25:10:19:39.2309",
+        "duration_s": 10.01
+      },
+      {
+        "file": "calibration_data/2025-6104/20251125_102146_hotwire_measurement_windtunnel_0deg_aoa_2025-6104_30ms.csv",
+        "speed_m_per_s": 30.0,
+        "samples": 341,
+        "sha256": "6aa090d2c0afd4dbcfd24095d47774b434d72e8ec7710c92a43b27d0ed7a60f4",
+        "voltage_mean_V": 6.27977,
+        "voltage_std_V": 0.00426056,
+        "voltage_min_V": 6.26776,
+        "voltage_max_V": 6.29275,
+        "first_timestamp": "2025:11:25:10:21:47.1209",
+        "duration_s": 10.02
+      },
+      {
+        "file": "calibration_data/2025-6104/20251125_102346_hotwire_measurement_windtunnel_0deg_aoa_2025-6104_5ms.csv",
+        "speed_m_per_s": 5.0,
+        "samples": 341,
+        "sha256": "08b48860dad5c258b62a3ae8e15c40cbc26803caa9fc10915c13c33f33e56286",
+        "voltage_mean_V": 3.22754,
+        "voltage_std_V": 0.0037034,
+        "voltage_min_V": 3.21784,
+        "voltage_max_V": 3.23625,
+        "first_timestamp": "2025:11:25:10:23:46.7001",
+        "duration_s": 10.02
+      }
+    ],
+    "other_sources": [
+      {
+        "file": "sensor_coefficients/daq_inputs.json",
+        "sha256": "1bd2da82786c9e7a1d8fafea090097034bbc578070dec6f5e1f71e639ac3ff48",
+        "used_for": "m and Uoffset of input ai1"
+      },
+      {
+        "file": "docs/Hitzdraht_doku.pdf",
+        "sha256": "3b8a5e3f788644f760558b0183344acb591fe5ac40ff6f8a07375648a7305a26",
+        "used_for": "formula (section 6.5, eq. 2 and 3)"
+      }
+    ]
+  },
+  "statistics": {
+    "rmse_training_m_per_s": 0.0500916,
+    "rmse_test_m_per_s": 0.0499042,
+    "coefficient_uncertainty": {
+      "a": {
+        "value": -0.399071,
+        "standard_error": 0.00802168,
+        "ci95": [
+          -0.414793,
+          -0.383349
+        ],
+        "leave_one_speed_out_standard_error": 0.197807
+      },
+      "b": {
+        "value": 83.819945,
+        "standard_error": 0.37943,
+        "ci95": [
+          83.0763,
+          84.5636
+        ],
+        "leave_one_speed_out_standard_error": 9.42326
+      },
+      "e": {
+        "value": 2.688932,
+        "standard_error": 0.00594928,
+        "ci95": [
+          2.67727,
+          2.70059
+        ],
+        "leave_one_speed_out_standard_error": 0.150347
+      }
+    },
+    "correlation": {
+      "a_b": -0.998789,
+      "a_e": 0.99534,
+      "b_e": -0.998845
+    },
+    "per_speed": [
+      {
+        "speed_m_per_s": 10.0,
+        "samples": 349,
+        "mean_fit_m_per_s": 9.98081,
+        "bias_m_per_s": -0.0191938,
+        "bias_percent": -0.191938,
+        "rmse_m_per_s": 0.0293843,
+        "mean_fit_without_this_speed_m_per_s": 9.96975,
+        "error_without_this_speed_m_per_s": -0.0302523
+      },
+      {
+        "speed_m_per_s": 15.0,
+        "samples": 341,
+        "mean_fit_m_per_s": 14.9764,
+        "bias_m_per_s": -0.0235532,
+        "bias_percent": -0.157021,
+        "rmse_m_per_s": 0.0365113,
+        "mean_fit_without_this_speed_m_per_s": 14.96,
+        "error_without_this_speed_m_per_s": -0.0399993
+      },
+      {
+        "speed_m_per_s": 20.0,
+        "samples": 365,
+        "mean_fit_m_per_s": 20.0057,
+        "bias_m_per_s": 0.00572723,
+        "bias_percent": 0.0286362,
+        "rmse_m_per_s": 0.039418,
+        "mean_fit_without_this_speed_m_per_s": 20.0071,
+        "error_without_this_speed_m_per_s": 0.00711115
+      },
+      {
+        "speed_m_per_s": 25.0,
+        "samples": 351,
+        "mean_fit_m_per_s": 25.0566,
+        "bias_m_per_s": 0.0566044,
+        "bias_percent": 0.226418,
+        "rmse_m_per_s": 0.0742875,
+        "mean_fit_without_this_speed_m_per_s": 25.0812,
+        "error_without_this_speed_m_per_s": 0.0811858
+      },
+      {
+        "speed_m_per_s": 30.0,
+        "samples": 341,
+        "mean_fit_m_per_s": 29.9642,
+        "bias_m_per_s": -0.0358263,
+        "bias_percent": -0.119421,
+        "rmse_m_per_s": 0.0719191,
+        "mean_fit_without_this_speed_m_per_s": 29.8363,
+        "error_without_this_speed_m_per_s": -0.163714
+      },
+      {
+        "speed_m_per_s": 5.0,
+        "samples": 341,
+        "mean_fit_m_per_s": 5.01996,
+        "bias_m_per_s": 0.0199594,
+        "bias_percent": 0.399189,
+        "rmse_m_per_s": 0.0239573,
+        "mean_fit_without_this_speed_m_per_s": 5.1071,
+        "error_without_this_speed_m_per_s": 0.107101
+      }
+    ],
+    "leave_one_speed_out_fits": [
+      {
+        "left_out_speed_m_per_s": 10.0,
+        "a": -0.39846,
+        "b": 83.7039,
+        "e": 2.69192
+      },
+      {
+        "left_out_speed_m_per_s": 15.0,
+        "a": -0.368441,
+        "b": 82.2837,
+        "e": 2.71442
+      },
+      {
+        "left_out_speed_m_per_s": 20.0,
+        "a": -0.40323,
+        "b": 84.0242,
+        "e": 2.68564
+      },
+      {
+        "left_out_speed_m_per_s": 25.0,
+        "a": -0.417612,
+        "b": 84.6625,
+        "e": 2.67712
+      },
+      {
+        "left_out_speed_m_per_s": 30.0,
+        "a": -0.540691,
+        "b": 90.8133,
+        "e": 2.58046
+      },
+      {
+        "left_out_speed_m_per_s": 5.0,
+        "a": -0.238691,
+        "b": 76.4244,
+        "e": 2.81002
+      }
+    ],
+    "explanation": {
+      "standard_error": "From the covariance matrix of the fit. It assumes that all samples are independent, which they are not (neighbouring samples are similar), so it is too small (optimistic).",
+      "ci95": "95 % confidence interval: value +- 1.96 * standard_error.",
+      "leave_one_speed_out_standard_error": "Spread of the coefficient when the fit is repeated with one speed left out at a time (jackknife). A more realistic error margin.",
+      "correlation": "Correlation between the coefficients. Values close to +-1 mean that the errors of a, b and e largely cancel each other in the velocity.",
+      "per_speed": "Velocity error at every calibration speed, over all samples of that speed. 'without_this_speed' = result of a fit that did not use this speed."
+    }
+  },
+  "software": {
+    "python": "3.13.2",
+    "numpy": "2.5.3",
+    "scipy": "1.18.1",
+    "pandas": "3.0.6"
+  },
+  "notes": [
+    "Fitted from the wind tunnel data of 25.11.2025 (5-30 m/s). There is no 0 m/s point, so below 5 m/s the velocity is extrapolated. Ts = 221 is the value of the previous 2025-6104 calibration (old table in read_hotwire.py).",
+    "06.10.2026: the folders windtunnel_data/ and calibration/ were renamed to calibration_data/ and sensor_coefficients/. The paths in this file and dataset_sha256 were updated to the new names; the data files themselves are unchanged (same SHA-256)."
+  ]
+}

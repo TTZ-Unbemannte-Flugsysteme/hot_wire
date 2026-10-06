@@ -22,8 +22,8 @@
       "e"
     ],
     "fixed_coefficients": {
-      "m": "input ai1 in calibration/daq_inputs.json",
-      "Uoffset": "input ai1 in calibration/daq_inputs.json",
+      "m": "input ai1 in sensor_coefficients/daq_inputs.json",
+      "Uoffset": "input ai1 in sensor_coefficients/daq_inputs.json",
       "Ts": "SENSOR_TEMPERATURE setting (cannot be fitted from data at one air temperature)"
     },
     "fluid_temperature_C": 20.0,
@@ -48,7 +48,7 @@
   },
   "source_data": {
     "description": "Wind tunnel recordings. The reference speed is the nominal tunnel speed in the file name (..._<speed>ms.csv).",
-    "folder": "windtunnel_data/2025-6131",
+    "folder": "calibration_data/2025-6131",
     "voltage_column": "ai1",
     "number_of_files": 8,
     "total_samples": 2756,
@@ -60,10 +60,10 @@
       -1.18608,
       4.65139
     ],
-    "dataset_sha256": "184f4a55ec0a9b505b086ad136ca64d518cf2e7dfa3f2a77e0cd70a28dc22c46",
+    "dataset_sha256": "c3b99a418926490d6751a5368472117483641850e558910b6f7ebbde4de71f71",
     "files": [
       {
-        "file": "windtunnel_data/2025-6131/20251125_103125_hotwire_measurement_windtunnel_0deg_aoa_2025-6131_0ms.csv",
+        "file": "calibration_data/2025-6131/20251125_103125_hotwire_measurement_windtunnel_0deg_aoa_2025-6131_0ms.csv",
         "speed_m_per_s": 0.0,
         "samples": 337,
         "sha256": "4f6594faf655118bca593432f0387d26fff95f4cf40666d65dd4a17f79757095",
@@ -75,7 +75,7 @@
         "duration_s": 10.02
       },
       {
-        "file": "windtunnel_data/2025-6131/20251125_103249_hotwire_measurement_windtunnel_0deg_aoa_2025-6131_5ms.csv",
+        "file": "calibration_data/2025-6131/20251125_103249_hotwire_measurement_windtunnel_0deg_aoa_2025-6131_5ms.csv",
         "speed_m_per_s": 5.0,
         "samples": 361,
         "sha256": "4531abc983732426a554d09435b1747fb58d24a20a60dc78abf0cfa148371c4b",
@@ -87,7 +87,7 @@
         "duration_s": 10.02
       },
       {
-        "file": "windtunnel_data/2025-6131/20251125_103425_hotwire_measurement_windtunnel_0deg_aoa_2025-6131_10ms.csv",
+        "file": "calibration_data/2025-6131/20251125_103425_hotwire_measurement_windtunnel_0deg_aoa_2025-6131_10ms.csv",
         "speed_m_per_s": 10.0,
         "samples": 344,
         "sha256": "ea2efe6ea7e5051e9b8b44af47b16ea85e087e666b9cf728c4b88d54992d2869",
@@ -99,7 +99,7 @@
         "duration_s": 10.02
       },
       {
-        "file": "windtunnel_data/2025-6131/20251125_103556_hotwire_measurement_windtunnel_0deg_aoa_2025-6131_15ms.csv",
+        "file": "calibration_data/2025-6131/20251125_103556_hotwire_measurement_windtunnel_0deg_aoa_2025-6131_15ms.csv",
         "speed_m_per_s": 15.0,
         "samples": 348,
         "sha256": "6e83445db10165cdfab5dd59981500dd62a237d1d307927da2d45b2508fbb0b3",
@@ -111,7 +111,7 @@
         "duration_s": 10.0
       },
       {
-        "file": "windtunnel_data/2025-6131/20251125_103736_hotwire_measurement_windtunnel_0deg_aoa_2025-6131_20ms.csv",
+        "file": "calibration_data/2025-6131/20251125_103736_hotwire_measurement_windtunnel_0deg_aoa_2025-6131_20ms.csv",
         "speed_m_per_s": 20.0,
         "samples": 339,
         "sha256": "ff309c6b71cf7215de1eb59657b52726e9b99685d0dd4a0eeeb932328807c889",
@@ -123,7 +123,7 @@
         "duration_s": 10.0
       },
       {
-        "file": "windtunnel_data/2025-6131/20251125_103924_hotwire_measurement_windtunnel_0deg_aoa_2025-6131_25ms.csv",
+        "file": "calibration_data/2025-6131/20251125_103924_hotwire_measurement_windtunnel_0deg_aoa_2025-6131_25ms.csv",
         "speed_m_per_s": 25.0,
         "samples": 343,
         "sha256": "68a4021445994a40137fe58966733275ecfdef9d64c1d00cb998603839700840",
@@ -135,7 +135,7 @@
         "duration_s": 10.03
       },
       {
-        "file": "windtunnel_data/2025-6131/20251125_104106_hotwire_measurement_windtunnel_0deg_aoa_2025-6131_30ms.csv",
+        "file": "calibration_data/2025-6131/20251125_104106_hotwire_measurement_windtunnel_0deg_aoa_2025-6131_30ms.csv",
         "speed_m_per_s": 30.0,
         "samples": 344,
         "sha256": "a3851ce91454f75328dbd09d35d416729a527a547f1dadca76d91d9027b87aa5",
@@ -147,7 +147,7 @@
         "duration_s": 10.01
       },
       {
-        "file": "windtunnel_data/2025-6131/20251125_104222_hotwire_measurement_windtunnel_0deg_aoa_2025-6131_35ms.csv",
+        "file": "calibration_data/2025-6131/20251125_104222_hotwire_measurement_windtunnel_0deg_aoa_2025-6131_35ms.csv",
         "speed_m_per_s": 35.0,
         "samples": 340,
         "sha256": "54f75ca916121a373ab9df5fe97b2becb17b37714eefbc5ad4b1866a1d95d106",
@@ -161,12 +161,12 @@
     ],
     "other_sources": [
       {
-        "file": "calibration/daq_inputs.json",
+        "file": "sensor_coefficients/daq_inputs.json",
         "sha256": "1bd2da82786c9e7a1d8fafea090097034bbc578070dec6f5e1f71e639ac3ff48",
         "used_for": "m and Uoffset of input ai1"
       },
       {
-        "file": "Hitzdraht_doku.pdf",
+        "file": "docs/Hitzdraht_doku.pdf",
         "sha256": "3b8a5e3f788644f760558b0183344acb591fe5ac40ff6f8a07375648a7305a26",
         "used_for": "formula (section 6.5, eq. 2 and 3)"
       }
@@ -355,5 +355,7 @@
     "scipy": "1.18.1",
     "pandas": "3.0.6"
   },
-  "notes": []
+  "notes": [
+    "06.10.2026: the folders windtunnel_data/ and calibration/ were renamed to calibration_data/ and sensor_coefficients/. The paths in this file and dataset_sha256 were updated to the new names; the data files themselves are unchanged (same SHA-256)."
+  ]
 }

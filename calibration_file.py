@@ -1,13 +1,14 @@
 """
 Reading and writing the hot-wire calibration files (JSON).
 
-This is a helper module. It is used by read_hotwire.py, recompute_velocity.py and the fit
-scripts; it is not run on its own.
+This is a helper module. It is used by read_hotwire.py and the fit scripts; it is not run on
+its own.
 
 Folder structure:
-    calibration/<sensor>.json      the active calibration of a sensor, e.g. calibration/2025-6131.json
-    calibration/daq_inputs.json    gain m and offset Uoffset of the DAQ inputs (factory test report)
-    calibration/archive/           older calibration files, kept so that old results can be traced
+    sensor_coefficients/<sensor>.json     the active calibration of a sensor, e.g. sensor_coefficients/2025-6131.json
+    sensor_coefficients/daq_inputs.json   gain m and offset Uoffset of the DAQ inputs (factory test report)
+    sensor_coefficients/archive/          older calibration files, kept so that old results can be traced
+    calibration_data/<sensor>/            the wind tunnel recordings that the calibrations are fitted from
 
 A calibration file contains (see README.md for details):
     coefficients   a, b, e, m, Uoffset and Ts for the formula in FORMULA_TEXT
@@ -21,7 +22,8 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-CALIBRATION_DIR = Path(__file__).resolve().parent / "calibration"
+CALIBRATION_DIR = Path(__file__).resolve().parent / "sensor_coefficients"
+CALIBRATION_DATA_DIR = Path(__file__).resolve().parent / "calibration_data"
 ARCHIVE_DIR = CALIBRATION_DIR / "archive"
 DAQ_INPUTS_FILE = CALIBRATION_DIR / "daq_inputs.json"
 
@@ -97,7 +99,7 @@ def load_calibration(sensor_sn):
 
 
 def load_daq_input(input_name):
-    """Gain m and offset Uoffset of one DAQ input (e.g. "ai1") from calibration/daq_inputs.json."""
+    """Gain m and offset Uoffset of one DAQ input (e.g. "ai1") from sensor_coefficients/daq_inputs.json."""
     inputs = read_json(DAQ_INPUTS_FILE)["inputs"]
     if input_name not in inputs:
         raise ValueError(f"Input '{input_name}' is not in {DAQ_INPUTS_FILE.name}. "
@@ -108,7 +110,7 @@ def load_daq_input(input_name):
 def save_calibration(sensor_sn, calibration):
     """
     Save 'calibration' as the active calibration file of the sensor.
-    An existing file is first moved to calibration/archive/, so no calibration is ever lost.
+    An existing file is first moved to sensor_coefficients/archive/, so no calibration is ever lost.
 
     Returns the path of the new file and the path of the archived file (or None).
     """
