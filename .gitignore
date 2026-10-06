@@ -1,0 +1,15 @@
+# Python: the virtual environment (every computer makes its own) and cache files
+.venv/
+__pycache__/
+
+# Measurement files are not stored in git ...
+*.csv
+# ... except the wind tunnel calibration data that the calibration files are fitted from
+!windtunnel_data/**/*.csv
+
+# Throttle runs are never stored in git: every file with "_<number>p_" or "_<number>p." in its
+# name, such as "..._40p_100s.csv" or "..._70p_60s_recomputed.csv". This applies in every
+# folder (windtunnel_data/ too) and to every file type.
+*_[0-9]p[_.]*
+*_[0-9][0-9]p[_.]*
+*_[0-9][0-9][0-9]p[_.]*

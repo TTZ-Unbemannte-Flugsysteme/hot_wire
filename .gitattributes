@@ -1,0 +1,3 @@
+# Windows batch files must keep Windows line endings (CRLF), otherwise
+# cmd.exe can misread them after a git clone on another computer.
+*.bat text eol=crlf

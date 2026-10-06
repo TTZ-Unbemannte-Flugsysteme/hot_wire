@@ -1,0 +1,27 @@
+{
+  "format_version": 1,
+  "sensor": "2025-6131",
+  "created": "2026-10-06 11:26:48",
+  "formula": "power_law_with_offset",
+  "formula_text": "v = a + (b * U_br^2 / (Ts - Tf))^e  (NOT the SVMtec formula)",
+  "coefficients": {
+    "a": -0.62125,
+    "b": 115.942024,
+    "e": 2.4687,
+    "m": 3.925034,
+    "Uoffset": 1.179091,
+    "Ts": 172.289596
+  },
+  "fit": {
+    "script": "find_hotwire_coefficient.py (version before 2026-10-01)",
+    "remark": "a and e ended exactly at their search limits"
+  },
+  "source_data": {
+    "description": "Wind tunnel data in windtunnel_data/2025-6131 (25.11.2025).",
+    "files": []
+  },
+  "statistics": null,
+  "notes": [
+    "Used by read_hotwire.py until 2026-10-01, e.g. for the measurements of 25.11.2025. It was fitted with a different formula than read_hotwire.py uses, so those velocities are 25-38 % too low; corrected copies are in recomputed_velocity/. Do not use."
+  ]
+}

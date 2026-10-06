@@ -1,0 +1,24 @@
+{
+  "format_version": 1,
+  "sensor": "2025-6104",
+  "created": "2026-10-06 11:26:48",
+  "formula": "svmtec_eq2",
+  "formula_text": "v = (a + b * U_br^2 / (Ts - Tf))^e  with  U_br = U_measured / m + Uoffset  (SVMtec manual Hitzdraht_doku.pdf, section 6.5, eq. 2 and 3)",
+  "coefficients": {
+    "a": -0.6676,
+    "b": 117.0587,
+    "e": 2.4396,
+    "m": 3.925,
+    "Uoffset": 1.499,
+    "Ts": 221
+  },
+  "fit": null,
+  "source_data": {
+    "description": "Coefficients copied unchanged from the table that was hard-coded in read_hotwire.py (most likely the SVMtec manufacturer calibration). The original calibration data is not in this repository, so there are no data files, hashes or error margins.",
+    "files": []
+  },
+  "statistics": null,
+  "notes": [
+    "Checked on 2026-10-01 against the wind tunnel data in windtunnel_data/2025-6104 (25.11.2025): with these coefficients the velocity reads 63-82 % too high in this setup (e.g. 48.9 m/s at 30 m/s). Re-calibrate with find_hotwire_coefficient.py before use."
+  ]
+}

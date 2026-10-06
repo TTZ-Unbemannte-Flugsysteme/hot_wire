@@ -1,0 +1,14 @@
+# Python packages needed by the scripts in this folder.
+# Install them with setup_venv.bat (Windows), or:  pip install -r requirements.txt
+#
+# Tested with Python 3.13.2 and: numpy 2.5.3, pandas 3.0.6, scipy 1.18.1,
+# matplotlib 3.11.2, nidaqmx 1.6.0. Other versions inside the ranges below should work.
+
+numpy>=2.0,<3
+pandas>=2.2.2,<4
+scipy>=1.13,<2
+matplotlib>=3.9,<4
+
+# Only needed by read_hotwire.py. The measurement PC also needs the NI-DAQmx driver
+# (see README.md).
+nidaqmx>=1.0,<2

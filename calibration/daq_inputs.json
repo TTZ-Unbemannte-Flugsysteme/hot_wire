@@ -1,0 +1,39 @@
+{
+  "format_version": 1,
+  "description": "Gain m and offset Uoffset of the hot-wire inputs of the SVMtec 4CTA system (used in U_br = U_measured / m + Uoffset), and the conversion of the temperature and pressure inputs.",
+  "source": {
+    "file": "PruefProtokoll_4CTA_7013_150427.pdf",
+    "sha256": "3431ea99d7e79cd30c33f3263e5aac1fa74fb25f532161c21ca28f2267b10ca4",
+    "document": "SVMtec test report 'Pruefprotokoll 4CTA Hitzdraht-Messsystem', SN 7013, 27.04.2015 (handwritten values)"
+  },
+  "inputs": {
+    "ai0": {
+      "m": 3.906,
+      "Uoffset": 1.5,
+      "bridge_voltage_V": 7.0
+    },
+    "ai1": {
+      "m": 3.985,
+      "Uoffset": 1.498,
+      "bridge_voltage_V": 7.0
+    },
+    "ai2": {
+      "m": 3.907,
+      "Uoffset": 1.501,
+      "bridge_voltage_V": 7.0
+    }
+  },
+  "other_inputs": {
+    "ai14": {
+      "quantity": "air temperature (PT100 amplifier)",
+      "conversion": "T [degC] = 60 * U"
+    },
+    "ai15": {
+      "quantity": "barometric pressure",
+      "conversion": "p [hPa] = 800 + 60 * U"
+    }
+  },
+  "notes": [
+    "The gain of ai1 is handwritten and slightly hard to read: 3.985 (possibly 3.935)."
+  ]
+}
