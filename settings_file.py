@@ -1,8 +1,7 @@
 """
 Reading the user settings (user_settings.json).
 
-This is a helper module. It is used by read_hotwire.py, find_hotwire_coefficient.py and
-optimization.py; it is not run on its own.
+This is a helper module. It is used by read_hotwire.py, find_hotwire_coefficient.py. It is not run on its own.
 
 user_settings.json has one section per task (every setting is explained in README.md):
     read_hotwire       recording with the NI DAQ (read_hotwire.py)

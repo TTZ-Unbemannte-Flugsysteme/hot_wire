@@ -6,12 +6,12 @@ What this script does:
     2. Converts every voltage sample into an air velocity (m/s) using the
        calibration file of the selected sensor: sensor_coefficients/<sensor>.json
        (made by find_hotwire_coefficient.py, see README.md).
-    3. Saves everything to a CSV file in the output folder (vortifer_data/).
+    3. Saves everything to a CSV file in the output folder ("output_folder" in user_settings.json).
     4. Shows a plot of voltage and velocity over time.
 
 How to use it:
     - Change the settings in user_settings.json (section "read_hotwire"), see README.md.
-    - Run the script. Press Ctrl+C to stop early; the data recorded so far
+    - Run the script. Press Ctrl+C to stop early. The data recorded so far
       is still saved.
 
 Requirements: nidaqmx, numpy, matplotlib (and the NI-DAQmx driver).
@@ -32,7 +32,7 @@ from settings_file import PROJECT_DIR, load_settings
 
 
 # =============================================================================
-# USER SETTINGS - they are in user_settings.json (section "read_hotwire"), see README.md
+# USER SETTINGS: in user_settings.json (section "read_hotwire"), see README.md
 # =============================================================================
 
 SETTINGS = load_settings("read_hotwire")
@@ -71,7 +71,7 @@ def get_calibration(sensor_sn):
     """
     Read the calibration file of the sensor (sensor_coefficients/<sensor>.json) and print where it comes from.
 
-    Returns the content of the file; the coefficients are in calibration["coefficients"].
+    Returns the content of the file. The coefficients are in calibration["coefficients"].
     """
     calibration = load_calibration(sensor_sn)
     source = calibration.get("source_data") or {}
@@ -99,7 +99,7 @@ def warn_if_outside_calibration(velocity, calibration):
     above = np.count_nonzero(velocity > speed_range[1])
     if above > 0:
         print(f"WARNING: {above} of {len(velocity)} samples ({100 * above / len(velocity):.0f} %) are above "
-              f"the highest calibrated speed ({speed_range[1]:g} m/s); these values are extrapolated.")
+              f"the highest calibrated speed ({speed_range[1]:g} m/s). These values are extrapolated.")
 
 
 def expand_channels(channel_text):
@@ -263,7 +263,7 @@ def plot_measurement(channel_names, voltages, runtimes, velocity):
 
     plt.xlabel("Time (s)")
     plt.ylabel("Voltage (V) / Velocity (m/s)")
-    plt.title(f"{DEVICE} - {len(runtimes)} samples")
+    plt.title(f"{DEVICE}, {len(runtimes)} samples")
     plt.legend()
     plt.grid()
     plt.tight_layout()

@@ -356,6 +356,6 @@
     "pandas": "3.0.6"
   },
   "notes": [
-    "06.10.2026: the folders windtunnel_data/ and calibration/ were renamed to calibration_data/ and sensor_coefficients/. The paths in this file and dataset_sha256 were updated to the new names; the data files themselves are unchanged (same SHA-256)."
+    "06.10.2026: the folders windtunnel_data/ and calibration/ were renamed to calibration_data/ and sensor_coefficients/. The paths in this file and dataset_sha256 were updated to the new names. The data files themselves are unchanged (same SHA-256)."
   ]
 }

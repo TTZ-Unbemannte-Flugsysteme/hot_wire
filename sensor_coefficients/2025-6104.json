@@ -301,6 +301,6 @@
   },
   "notes": [
     "Fitted from the wind tunnel data of 25.11.2025 (5-30 m/s). There is no 0 m/s point, so below 5 m/s the velocity is extrapolated. Ts = 221 is the value of the previous 2025-6104 calibration (old table in read_hotwire.py).",
-    "06.10.2026: the folders windtunnel_data/ and calibration/ were renamed to calibration_data/ and sensor_coefficients/. The paths in this file and dataset_sha256 were updated to the new names; the data files themselves are unchanged (same SHA-256)."
+    "06.10.2026: the folders windtunnel_data/ and calibration/ were renamed to calibration_data/ and sensor_coefficients/. The paths in this file and dataset_sha256 were updated to the new names. The data files themselves are unchanged (same SHA-256)."
   ]
 }

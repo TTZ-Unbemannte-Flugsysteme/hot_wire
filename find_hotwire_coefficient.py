@@ -38,7 +38,7 @@ from settings_file import PROJECT_DIR, load_settings, values_in_order
 
 
 # =============================================================================
-# USER SETTINGS - they are in user_settings.json (section "calibration_fit"), see README.md
+# USER SETTINGS: in user_settings.json (section "calibration_fit"), see README.md
 # =============================================================================
 
 SETTINGS = load_settings("calibration_fit")
@@ -93,7 +93,7 @@ def model(u_measured, a, b, e):
         v        = (a + b * u_bridge^2 / (Ts - Tf)) ^ e
 
     m and Uoffset come from DAQ_INPUT, Ts = SENSOR_TEMPERATURE, Tf = FLUID_TEMPERATURE.
-    Below zero flow (a + b * ... < 0) the formula has no solution; v is then set to 0.
+    Below zero flow (a + b * ... < 0) the formula has no solution, so v is set to 0.
     """
     u_bridge = u_measured / DAQ_INPUT["m"] + DAQ_INPUT["Uoffset"]
     base = a + b * u_bridge ** 2 / (SENSOR_TEMPERATURE - FLUID_TEMPERATURE)
@@ -118,7 +118,7 @@ def relative_name(path):
 
 
 def rounded(value, digits=6):
-    """Round to 'digits' significant digits for the calibration file; None if not a finite number."""
+    """Round to 'digits' significant digits for the calibration file (None if not a finite number)."""
     if value is None or not np.isfinite(value):
         return None
     return float(f"{value:.{digits}g}")
@@ -222,7 +222,7 @@ def warn_if_at_bounds(params, lower, upper):
         margin = 1e-6 * (high - low)
         if value - low < margin or high - value < margin:
             print(f"WARNING: '{name}' = {value:.6f} is at its search limit [{low}, {high}]. "
-                  f'The result is probably not the best fit; widen "lower_bounds" / '
+                  f'The result is probably not the best fit. Widen "lower_bounds" / '
                   f'"upper_bounds" in user_settings.json.')
 
 
@@ -313,7 +313,7 @@ def calculate_statistics(params, covariance, files, voltages_by_file, u_train, w
 
 
 def show(value, decimals):
-    """Number as text for the printed tables; '-' if there is no value."""
+    """Number as text for the printed tables, or '-' if there is no value."""
     return "-" if value is None else f"{value:.{decimals}f}"
 
 
@@ -431,7 +431,7 @@ def plot_fit_with_error_axis(u_train, w_train, u_test, w_test, params, n_bins=N_
 
     ax1.set_xlabel("Voltage (V)")
     ax1.set_ylabel("Speed (m/s)")
-    ax1.set_title(f"Curve fit: speed vs. voltage - sensor {BRIDGE_SENSOR_SN}")
+    ax1.set_title(f"Curve fit: speed vs. voltage, sensor {BRIDGE_SENSOR_SN}")
     ax1.grid(True, linestyle="--", alpha=0.4)
 
     # --- Mean absolute error per voltage bin ---

@@ -223,8 +223,8 @@ __marimo__/
 .venv/
 __pycache__/
 
-# Measurement files are not stored in git ...
+# Measurement files are not stored in git, except the wind tunnel calibration data that the
+# sensor coefficients are fitted from
 *.csv
-# ... except the wind tunnel calibration data that the sensor coefficients are fitted from
 !calibration_data/**/*.csv
 

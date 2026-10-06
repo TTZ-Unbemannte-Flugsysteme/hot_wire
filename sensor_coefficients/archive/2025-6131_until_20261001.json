@@ -22,6 +22,6 @@
   },
   "statistics": null,
   "notes": [
-    "Used by read_hotwire.py until 2026-10-01, e.g. for the measurements of 25.11.2025. It was fitted with a different formula than read_hotwire.py uses, so those velocities are 25-38 % too low; corrected copies are in recomputed_velocity/. Do not use."
+    "Used by read_hotwire.py until 2026-10-01, e.g. for the measurements of 25.11.2025. It was fitted with a different formula than read_hotwire.py uses, so those velocities are 25-38 % too low. Corrected copies are in recomputed_velocity/. Do not use."
   ]
 }

@@ -1,7 +1,7 @@
 """
 Reading and writing the hot-wire calibration files (JSON).
 
-This is a helper module. It is used by read_hotwire.py and the fit scripts; it is not run on
+This is a helper module. It is used by read_hotwire.py and the fit scripts and is not run on
 its own.
 
 Folder structure:
@@ -73,8 +73,8 @@ def load_calibration(sensor_sn):
     """
     Read and check the active calibration file of a sensor.
 
-    Returns the whole content of the file as a dictionary;
-    the coefficients are in calibration["coefficients"].
+    Returns the whole content of the file as a dictionary.
+    The coefficients are in calibration["coefficients"].
     """
     path = calibration_path(sensor_sn)
     if not path.is_file():
