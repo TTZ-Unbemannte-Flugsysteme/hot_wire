@@ -177,3 +177,7 @@ The calibration scripts work on every system. `read_hotwire.py` needs the NI-DAQ
 - The `.venv` folder is **not** uploaded to GitHub (`.gitignore` excludes it). Every computer creates its own (step 3 of the setup).
 - Measurement files (`*.csv`) are not stored in git, except the wind tunnel calibration data in `calibration_data/`, so the fit scripts work on every computer.
 - `user_settings.json` is in git. Commit a change only if it should become the default for everyone. A new `test_label` for a single run does not need to be committed.
+
+## License
+
+The code is released under the MIT License, see [LICENSE](LICENSE). The documents in `docs/` belong to their respective authors and are not covered by this license.
