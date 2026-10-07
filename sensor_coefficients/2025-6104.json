@@ -1,7 +1,7 @@
 {
   "format_version": 1,
   "sensor": "2025-6104",
-  "created": "2026-10-06 13:37:12",
+  "created": "2026-10-07 13:47:03",
   "formula": "svmtec_eq2",
   "formula_text": "v = (a + b * U_br^2 / (Ts - Tf))^e  with  U_br = U_measured / m + Uoffset  (SVMtec manual Hitzdraht_doku.pdf, section 6.5, eq. 2 and 3)",
   "coefficients": {
@@ -14,7 +14,7 @@
   },
   "fit": {
     "script": "find_hotwire_coefficient.py",
-    "script_sha256": "7bfda2f01a049634222674e06b88d38f232f6dfbf6c5c08a83f4dc8739dbc8c5",
+    "script_sha256": "f2fa18858c1d15f869a7d61e01c82b53d6dcbad948b6a3c2971bf0bff1a3a888",
     "method": "scipy.optimize.curve_fit (bounded least squares on the velocity)",
     "fitted_coefficients": [
       "a",
@@ -24,7 +24,7 @@
     "fixed_coefficients": {
       "m": "input ai1 in sensor_coefficients/daq_inputs.json",
       "Uoffset": "input ai1 in sensor_coefficients/daq_inputs.json",
-      "Ts": "SENSOR_TEMPERATURE setting (cannot be fitted from data at one air temperature)"
+      "Ts": "sensor_temperatures_C in user_settings.json (cannot be fitted from data at one air temperature)"
     },
     "fluid_temperature_C": 20.0,
     "initial_guess": [
@@ -299,8 +299,5 @@
     "scipy": "1.18.1",
     "pandas": "3.0.6"
   },
-  "notes": [
-    "Fitted from the wind tunnel data of 25.11.2025 (5-30 m/s). There is no 0 m/s point, so below 5 m/s the velocity is extrapolated. Ts = 221 is the value of the previous 2025-6104 calibration (old table in read_hotwire.py).",
-    "06.10.2026: the folders windtunnel_data/ and calibration/ were renamed to calibration_data/ and sensor_coefficients/. The paths in this file and dataset_sha256 were updated to the new names. The data files themselves are unchanged (same SHA-256)."
-  ]
+  "notes": []
 }
