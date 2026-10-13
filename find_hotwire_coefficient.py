@@ -12,16 +12,17 @@ What this script does:
        and the velocity error at every speed.
     4. Saves the result in sensor_coefficients/<sensor>.json together with a description of the data
        (file names, speeds, numbers of samples, SHA-256 hashes). An older calibration file of
-       the sensor is first moved to sensor_coefficients/archive/. read_hotwire.py then uses the new file.
+        the sensor is first copied to sensor_coefficients/archive/. read_hotwire.py then uses the new file.
     5. Plots the fit (with the error vs. voltage) and the residuals.
 
-Settings: user_settings.json, section "calibration_fit" (see README.md).
+Settings: user_settings.local.json, or user_settings.json, section "calibration_fit" (see README.md).
 
 Requirements: numpy, pandas, scipy, matplotlib
 """
 
 import platform
 import re
+import argparse
 from datetime import datetime
 from pathlib import Path
 
@@ -31,39 +32,39 @@ import pandas as pd
 import scipy
 from scipy.optimize import curve_fit
 
-from calibration_file import (CALIBRATION_DATA_DIR, DAQ_INPUTS_FILE, FORMAT_VERSION, FORMULA_ID,
+from calibration_file import (CALIBRATION_DATA_DIR, DAQ_INPUTS_FILE, FORMAT_VERSION, FORMULA_ID, HASH_METHOD,
                               FORMULA_TEXT, combined_sha256, file_sha256, load_daq_input,
-                              save_calibration)
-from settings_file import PROJECT_DIR, load_settings, values_in_order
+                              read_json, save_calibration)
+from hotwire_model import voltage_to_velocity
+from settings_file import PROJECT_DIR, load_settings, settings_path, values_in_order
 
 
 # =============================================================================
-# USER SETTINGS: in user_settings.json (section "calibration_fit"), see README.md
+# USER SETTINGS: section "calibration_fit", see README.md
 # =============================================================================
-
-SETTINGS = load_settings("calibration_fit")
-
-BRIDGE_SENSOR_SN = SETTINGS["sensor"]               # Sensor to calibrate (= name of the data sub-folder)
-MEASUREMENT_COLUMN = SETTINGS["voltage_column"]     # CSV column (= DAQ input) with the hot-wire voltage
-FLUID_TEMPERATURE = SETTINGS["air_temperature_C"]   # Air temperature Tf during the wind tunnel test [°C]
-SAVE_CALIBRATION = SETTINGS["save_calibration"]     # Save the result as sensor_coefficients/<sensor>.json
-CALIBRATION_NOTE = SETTINGS["calibration_note"]     # Optional remark stored in the calibration file
-N_ERROR_BINS = SETTINGS["plot_error_bins"]          # Voltage bins of the "mean error" line in the plot
-
-# Sensor temperature Ts [°C]. It is fixed, because wind tunnel data at one air temperature
-# cannot determine it (only b / (Ts - Tf) matters). None = no Ts known for this sensor.
-SENSOR_TEMPERATURE = SETTINGS["sensor_temperatures_C"].get(BRIDGE_SENSOR_SN)
 
 PARAMETER_NAMES = ["a", "b", "e"]   # The fitted coefficients, in this order
-INITIAL_GUESS = values_in_order(SETTINGS, "initial_guess", PARAMETER_NAMES)   # Start values of the fit
-LOWER_BOUNDS = values_in_order(SETTINGS, "lower_bounds", PARAMETER_NAMES)     # Search range of the fit
-UPPER_BOUNDS = values_in_order(SETTINGS, "upper_bounds", PARAMETER_NAMES)
-
-DATA_DIR = CALIBRATION_DATA_DIR / BRIDGE_SENSOR_SN
 MANUAL_FILE = PROJECT_DIR / "docs" / "Hitzdraht_doku.pdf"   # Source of the formula (its hash is stored)
 
-# Gain m and offset Uoffset of the DAQ input, from sensor_coefficients/daq_inputs.json
-DAQ_INPUT = load_daq_input(MEASUREMENT_COLUMN)
+
+def configure(settings=None):
+    """Load settings only when running a fit, so importing helpers has no side effects."""
+    global SETTINGS, BRIDGE_SENSOR_SN, MEASUREMENT_COLUMN, FLUID_TEMPERATURE
+    global SAVE_CALIBRATION, CALIBRATION_NOTE, N_ERROR_BINS, SENSOR_TEMPERATURE
+    global INITIAL_GUESS, LOWER_BOUNDS, UPPER_BOUNDS, DATA_DIR, DAQ_INPUT
+    SETTINGS = load_settings("calibration_fit") if settings is None else settings
+    BRIDGE_SENSOR_SN = SETTINGS["sensor"]
+    MEASUREMENT_COLUMN = SETTINGS["voltage_column"]
+    FLUID_TEMPERATURE = SETTINGS["air_temperature_C"]
+    SAVE_CALIBRATION = SETTINGS["save_calibration"]
+    CALIBRATION_NOTE = SETTINGS["calibration_note"]
+    N_ERROR_BINS = SETTINGS["plot_error_bins"]
+    SENSOR_TEMPERATURE = SETTINGS["sensor_temperatures_C"].get(BRIDGE_SENSOR_SN)
+    INITIAL_GUESS = values_in_order(SETTINGS, "initial_guess", PARAMETER_NAMES)
+    LOWER_BOUNDS = values_in_order(SETTINGS, "lower_bounds", PARAMETER_NAMES)
+    UPPER_BOUNDS = values_in_order(SETTINGS, "upper_bounds", PARAMETER_NAMES)
+    DATA_DIR = CALIBRATION_DATA_DIR / BRIDGE_SENSOR_SN
+    DAQ_INPUT = load_daq_input(MEASUREMENT_COLUMN)
 
 # Short explanations that are stored with the statistics in the calibration file
 STATISTICS_EXPLANATION = {
@@ -95,9 +96,9 @@ def model(u_measured, a, b, e):
     m and Uoffset come from DAQ_INPUT, Ts = SENSOR_TEMPERATURE, Tf = FLUID_TEMPERATURE.
     Below zero flow (a + b * ... < 0) the formula has no solution, so v is set to 0.
     """
-    u_bridge = u_measured / DAQ_INPUT["m"] + DAQ_INPUT["Uoffset"]
-    base = a + b * u_bridge ** 2 / (SENSOR_TEMPERATURE - FLUID_TEMPERATURE)
-    return np.clip(base, 0.0, None) ** e
+    coefficients = {"a": a, "b": b, "e": e, "m": DAQ_INPUT["m"],
+                    "Uoffset": DAQ_INPUT["Uoffset"], "Ts": SENSOR_TEMPERATURE}
+    return voltage_to_velocity(u_measured, coefficients, FLUID_TEMPERATURE, clip_negative=True)[0]
 
 
 def fit_coefficients(u, w, start):
@@ -133,14 +134,14 @@ def find_speed_files(directory):
     if not directory.is_dir():
         raise FileNotFoundError(f"Data folder not found: {directory}")
 
-    pattern = re.compile(r"_(\d+)ms\.csv$", re.IGNORECASE)
+    pattern = re.compile(r"_(\d+(?:\.\d+)?)ms(?:_\d+)?\.csv$", re.IGNORECASE)
     files = {}
     for path in sorted(directory.glob("*.csv")):
         match = pattern.search(path.name)
         if match:
             files[path] = float(match.group(1))
         else:
-            print(f"Skipping {path.name} (no '_<speed>ms.csv' at the end of the name)")
+            print(f"Skipping {path.name} (expected an ending such as '_15ms.csv', '_2.5ms.csv' or '_15ms_1.csv')")
 
     if not files:
         raise FileNotFoundError(f"No files named '*_<speed>ms.csv' found in: {directory}")
@@ -158,12 +159,37 @@ def load_measurements(files, column):
     voltages_by_file = {}
     file_descriptions = []
     for path, speed in files.items():
-        df = pd.read_csv(path)
+        metadata_path = path.with_suffix(".metadata.json")
+        metadata = read_json(metadata_path) if metadata_path.is_file() else None
+        if metadata is not None:
+            if not isinstance(metadata, dict) or not isinstance(metadata.get("settings"), dict):
+                raise ValueError(f"{metadata_path.name}: metadata must contain a settings object.")
+            if metadata.get("status") not in {"complete", "stopped"}:
+                raise ValueError(f"{path.name}: the recording did not finish cleanly; check its metadata before fitting.")
+            if metadata.get("hash_method") != HASH_METHOD or metadata.get("csv_sha256") != file_sha256(path):
+                raise ValueError(f"{path.name}: the CSV fingerprint does not match its recording metadata. Recover the original CSV before fitting.")
+            recorded = metadata.get("settings", {})
+            if (recorded.get("sensor") != BRIDGE_SENSOR_SN or metadata.get("hotwire_channel") != column or
+                    recorded.get("air_temperature_C") != FLUID_TEMPERATURE):
+                raise ValueError(f"{path.name}: recorded sensor, hot-wire channel or air temperature differs from calibration_fit settings.")
+        try:
+            df = pd.read_csv(path)
+        except (pd.errors.ParserError, pd.errors.EmptyDataError) as error:
+            raise ValueError(f"Cannot read {path.name}: {error}") from None
         if column not in df.columns:
             raise ValueError(f"Column '{column}' not found in {path.name}. "
                              f"Available columns: {list(df.columns)}")
 
-        voltages = df[column].dropna().to_numpy(dtype=float)
+        try:
+            raw_voltages = pd.to_numeric(df[column], errors="raise").to_numpy(dtype=float)
+        except (ValueError, TypeError) as error:
+            raise ValueError(f"{path.name}: '{column}' must contain numeric voltage samples: {error}") from None
+        voltages = raw_voltages[np.isfinite(raw_voltages)]
+        discarded = len(raw_voltages) - len(voltages)
+        if len(voltages) < 2:
+            raise ValueError(f"{path.name}: at least two finite voltage samples are required.")
+        if discarded:
+            print(f"WARNING: discarded {discarded} non-finite voltage samples in {path.name}.")
         voltages_by_file[path] = voltages
         print(f"Loaded {path.name}: {len(voltages)} samples at {speed:g} m/s")
 
@@ -171,6 +197,7 @@ def load_measurements(files, column):
             "file": relative_name(path),
             "speed_m_per_s": speed,
             "samples": len(voltages),
+            "discarded_nonfinite_samples": discarded,
             "sha256": file_sha256(path),
             "voltage_mean_V": rounded(np.mean(voltages)),
             "voltage_std_V": rounded(np.std(voltages)),
@@ -179,6 +206,8 @@ def load_measurements(files, column):
             "first_timestamp": str(df["Timestamp"].iloc[0]) if "Timestamp" in df.columns else None,
             "duration_s": rounded(df["Runtime"].max(), 4) if "Runtime" in df.columns else None,
         })
+        if metadata is not None:
+            file_descriptions[-1].update(metadata_file=relative_name(metadata_path), metadata_sha256=file_sha256(metadata_path))
     return voltages_by_file, file_descriptions
 
 
@@ -201,19 +230,19 @@ def check_settings(lower, upper, guess):
     """Stop with a clear message if the settings do not make sense."""
     if SENSOR_TEMPERATURE is None:
         raise ValueError(f"No sensor temperature Ts for sensor {BRIDGE_SENSOR_SN}: add it to "
-                         f'"sensor_temperatures_C" in user_settings.json.')
+                         f'"sensor_temperatures_C" in {settings_path().name}.')
     if SENSOR_TEMPERATURE <= FLUID_TEMPERATURE:
         raise ValueError(f"The sensor temperature Ts ({SENSOR_TEMPERATURE} °C) must be higher than "
-                         f'"air_temperature_C" ({FLUID_TEMPERATURE} °C) in user_settings.json.')
+                         f'"air_temperature_C" ({FLUID_TEMPERATURE} °C) in {settings_path().name}.')
 
     for name, low, high, start in zip(PARAMETER_NAMES, lower, upper, guess):
         if low >= high:
             raise ValueError(f"Bounds for '{name}' are wrong: lower ({low}) >= upper ({high}). "
-                             f'Change "lower_bounds" / "upper_bounds" in user_settings.json.')
+                             f'Change "lower_bounds" / "upper_bounds" in {settings_path().name}.')
         if not low <= start <= high:
             raise ValueError(f"Initial guess for '{name}' ({start}) is outside the bounds "
                              f'[{low}, {high}]. Change "initial_guess", "lower_bounds" or '
-                             f'"upper_bounds" in user_settings.json.')
+                             f'"upper_bounds" in {settings_path().name}.')
 
 
 def warn_if_at_bounds(params, lower, upper):
@@ -223,7 +252,7 @@ def warn_if_at_bounds(params, lower, upper):
         if value - low < margin or high - value < margin:
             print(f"WARNING: '{name}' = {value:.6f} is at its search limit [{low}, {high}]. "
                   f'The result is probably not the best fit. Widen "lower_bounds" / '
-                  f'"upper_bounds" in user_settings.json.')
+                  f'"upper_bounds" in {settings_path().name}.')
 
 
 # =============================================================================
@@ -242,26 +271,29 @@ def leave_one_speed_out(files, voltages_by_file, params):
     Returns one result per speed: the refitted a, b, e and the mean velocity that this fit
     predicts for the left-out speed (a speed it has not seen).
     """
-    results = []
-    for left_out in files:
-        others = [path for path in files if path != left_out]
+    results = {}
+    for speed in sorted(set(files.values())):
+        held_out = [path for path in files if files[path] == speed]
+        others = [path for path in files if files[path] != speed]
         u = np.concatenate([voltages_by_file[path] for path in others])
         w = np.concatenate([np.full(len(voltages_by_file[path]), files[path]) for path in others])
         refit, _ = fit_coefficients(u[::2], w[::2], params)
-        predicted = float(np.mean(model(voltages_by_file[left_out], *refit)))
-        results.append({"params": refit, "predicted": predicted})
+        voltage = np.concatenate([voltages_by_file[path] for path in held_out])
+        predicted = float(np.mean(model(voltage, *refit)))
+        results[speed] = {"params": refit, "predicted": predicted}
     return results
 
 
 def calculate_statistics(params, covariance, files, voltages_by_file, u_train, w_train, u_test, w_test):
     """Error margins of the coefficients and of the velocity, as stored in the calibration file."""
     standard_errors = np.sqrt(np.diag(covariance))
-    correlation = covariance / np.outer(standard_errors, standard_errors)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        correlation = covariance / np.outer(standard_errors, standard_errors)
 
     # Leave one speed out. Needs at least 4 speeds, because 3 coefficients are fitted.
-    loo = leave_one_speed_out(files, voltages_by_file, params) if len(files) >= 4 else []
+    loo = leave_one_speed_out(files, voltages_by_file, params) if len(set(files.values())) >= 4 else {}
     if loo:
-        loo_params = np.array([result["params"] for result in loo])
+        loo_params = np.array([result["params"] for result in loo.values()])
         n = len(loo)
         jackknife_errors = np.sqrt((n - 1) / n * np.sum((loo_params - loo_params.mean(axis=0)) ** 2, axis=0))
     else:
@@ -278,10 +310,11 @@ def calculate_statistics(params, covariance, files, voltages_by_file, u_train, w
         }
 
     per_speed = []
-    for i, (path, speed) in enumerate(files.items()):
-        predicted = model(voltages_by_file[path], *params)
+    for speed in sorted(set(files.values())):
+        voltages = np.concatenate([voltages_by_file[path] for path in files if files[path] == speed])
+        predicted = model(voltages, *params)
         mean_fit = float(np.mean(predicted))
-        without = loo[i]["predicted"] if loo else None
+        without = loo[speed]["predicted"] if loo else None
         per_speed.append({
             "speed_m_per_s": speed,
             "samples": len(predicted),
@@ -294,7 +327,7 @@ def calculate_statistics(params, covariance, files, voltages_by_file, u_train, w
         })
 
     loo_fits = []
-    for speed, result in zip(files.values(), loo):
+    for speed, result in loo.items():
         fit_result = {"left_out_speed_m_per_s": speed}
         for name, value in zip(PARAMETER_NAMES, result["params"]):
             fit_result[name] = rounded(value)
@@ -354,15 +387,20 @@ def build_calibration(coefficients, statistics, file_descriptions, n_train, n_te
         "fit": {
             "script": Path(__file__).name,
             "script_sha256": file_sha256(__file__),
+            "hash_method": HASH_METHOD,
+            "model_script": "hotwire_model.py",
+            "model_script_sha256": file_sha256(PROJECT_DIR / "hotwire_model.py"),
             "method": "scipy.optimize.curve_fit (bounded least squares on the velocity)",
             "fitted_coefficients": PARAMETER_NAMES,
             "fixed_coefficients": {
                 "m": f"input {MEASUREMENT_COLUMN} in {relative_name(DAQ_INPUTS_FILE)}",
                 "Uoffset": f"input {MEASUREMENT_COLUMN} in {relative_name(DAQ_INPUTS_FILE)}",
-                "Ts": "sensor_temperatures_C in user_settings.json (cannot be fitted from data at one "
+                "Ts": "sensor_temperatures_C in the settings file (cannot be fitted from data at one "
                       "air temperature)",
             },
             "fluid_temperature_C": FLUID_TEMPERATURE,
+            "settings": SETTINGS,
+            "settings_file": settings_path().name,
             "initial_guess": INITIAL_GUESS,
             "lower_bounds": LOWER_BOUNDS,
             "upper_bounds": UPPER_BOUNDS,
@@ -371,11 +409,13 @@ def build_calibration(coefficients, statistics, file_descriptions, n_train, n_te
             "split": "training = every 2nd sample (even sample numbers), test = the remaining samples",
         },
         "source_data": {
+            "hash_method": HASH_METHOD,
             "description": "Wind tunnel recordings. The reference speed is the nominal tunnel speed "
                            "in the file name (..._<speed>ms.csv).",
             "folder": relative_name(DATA_DIR),
             "voltage_column": MEASUREMENT_COLUMN,
             "number_of_files": len(file_descriptions),
+            "number_of_speeds": len(set(speeds)),
             "total_samples": sum(f["samples"] for f in file_descriptions),
             "speed_range_m_per_s": [min(speeds), max(speeds)],
             "voltage_range_V": [min(f["voltage_min_V"] for f in file_descriptions),
@@ -416,11 +456,12 @@ def plot_residuals(u_measured, w_true, params):
     plt.show()
 
 
-def plot_fit_with_error_axis(u_train, w_train, u_test, w_test, params, n_bins=N_ERROR_BINS):
+def plot_fit_with_error_axis(u_train, w_train, u_test, w_test, params, n_bins=None):
     """
     Left axis: training/test data and the fitted curve.
     Right axis (red): mean absolute error of the test data vs. voltage.
     """
+    n_bins = N_ERROR_BINS if n_bins is None else n_bins
     fig, ax1 = plt.subplots(figsize=(12, 5))
 
     ax1.scatter(u_train, w_train, s=20, label="Training data (every 2nd sample)", alpha=0.7)
@@ -439,8 +480,7 @@ def plot_fit_with_error_axis(u_train, w_train, u_test, w_test, params, n_bins=N_
 
     bin_edges = np.linspace(np.min(u_test), np.max(u_test), n_bins + 1)
     bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
-    bin_index = np.digitize(u_test, bin_edges) - 1   # 0 ... n_bins-1
-    # (the largest value falls into bin n_bins and is skipped)
+    bin_index = np.clip(np.digitize(u_test, bin_edges) - 1, 0, n_bins - 1)
 
     mae_per_bin = np.full(n_bins, np.nan)
     for i in range(n_bins):
@@ -466,10 +506,14 @@ def plot_fit_with_error_axis(u_train, w_train, u_test, w_test, params, n_bins=N_
 # MAIN PROGRAM
 # =============================================================================
 
-def main():
+def main(show_plots=True):
     # 1. Check the settings and load the data
+    configure()
+    print(f"Settings: {settings_path().name}; save_calibration = {SAVE_CALIBRATION}")
     check_settings(LOWER_BOUNDS, UPPER_BOUNDS, INITIAL_GUESS)
     files = find_speed_files(DATA_DIR)
+    if len(set(files.values())) < 3:
+        raise ValueError("At least three distinct wind tunnel speeds are required to fit a, b and e; use four or more for the leave-one-speed-out check.")
     voltages_by_file, file_descriptions = load_measurements(files, MEASUREMENT_COLUMN)
     u_measured, w = combine_files(files, voltages_by_file)
 
@@ -500,12 +544,19 @@ def main():
         if archived:
             print(f"The previous calibration file was moved to {relative_name(archived)}")
     else:
-        print('\n"save_calibration" is false in user_settings.json: no calibration file was written.')
+        print('\n"save_calibration" is false: no calibration file was written.')
 
     # 6. Plots
-    plot_fit_with_error_axis(u_train, w_train, u_test, w_test, params)
-    plot_residuals(u_measured, w, params)
+    if show_plots:
+        plot_fit_with_error_axis(u_train, w_train, u_test, w_test, params)
+        plot_residuals(u_measured, w, params)
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Fit a calibration from wind tunnel CSV files (settings in user_settings.local.json).")
+    parser.add_argument("--no-plot", action="store_true", help="print results without opening plot windows")
+    args = parser.parse_args()
+    try:
+        main(show_plots=not args.no_plot)
+    except (ValueError, RuntimeError, OSError) as error:
+        raise SystemExit(f"ERROR: {error}") from None

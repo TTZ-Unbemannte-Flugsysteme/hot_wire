@@ -228,3 +228,9 @@ __pycache__/
 *.csv
 !calibration_data/**/*.csv
 
+# Each student keeps a complete local settings copy and measurement metadata.
+user_settings.local.json
+measurements/
+*.metadata.json
+!calibration_data/**/*.metadata.json
+

@@ -1,3 +1,5 @@
-# Windows batch files must keep Windows line endings (CRLF), otherwise
-# cmd.exe can misread them after a git clone on another computer.
+# Keep source fingerprints stable across Windows, Linux and macOS checkouts.
+* text=auto eol=lf
+# cmd.exe needs Windows line endings for batch scripts.
 *.bat text eol=crlf
+*.pdf binary

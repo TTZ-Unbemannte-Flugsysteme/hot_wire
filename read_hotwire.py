@@ -6,11 +6,11 @@ What this script does:
     2. Converts every voltage sample into an air velocity (m/s) using the
        calibration file of the selected sensor: sensor_coefficients/<sensor>.json
        (made by find_hotwire_coefficient.py, see README.md).
-    3. Saves everything to a CSV file in the output folder ("output_folder" in user_settings.json).
+    3. Writes each sample to CSV and saves settings/calibration in a metadata JSON file.
     4. Shows a plot of voltage and velocity over time.
 
 How to use it:
-    - Change the settings in user_settings.json (section "read_hotwire"), see README.md.
+    - Change user_settings.local.json (section "read_hotwire"), see README.md.
     - Run the script. Press Ctrl+C to stop early. The data recorded so far
       is still saved.
 
@@ -18,35 +18,18 @@ Requirements: nidaqmx, numpy, matplotlib (and the NI-DAQmx driver).
 """
 
 import csv
+import math
+import platform
 import time
 from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import nidaqmx
-from nidaqmx.constants import TerminalConfiguration
-
-from calibration_file import CALIBRATION_DIR, load_calibration
-from settings_file import PROJECT_DIR, load_settings
-
-
-# =============================================================================
-# USER SETTINGS: in user_settings.json (section "read_hotwire"), see README.md
-# =============================================================================
-
-SETTINGS = load_settings("read_hotwire")
-
-BRIDGE_SENSOR_SN = SETTINGS["sensor"]                       # Its calibration: sensor_coefficients/<sensor>.json
-TEST_LABEL = SETTINGS["test_label"]                         # Added to the output file name
-OUTPUT_DIR = PROJECT_DIR / SETTINGS["output_folder"]        # Folder for the output file
-MEASUREMENT_TIME = SETTINGS["measurement_time_s"]           # How long to record [s]
-SAMPLE_RATE = SETTINGS["sample_rate_Hz"]                    # Requested samples per second (see record_samples)
-FLUID_TEMPERATURE = SETTINGS["air_temperature_C"]           # Air temperature Tf [°C], entered by hand
-DEVICE = SETTINGS["daq_device"]                             # Name of the DAQ device (see NI MAX)
-CHANNELS = SETTINGS["daq_channels"]                         # Channels to read, e.g. "ai1" or "ai1:3"
-HOTWIRE_CHANNEL_INDEX = SETTINGS["hotwire_channel_index"]   # 0 = the first channel in CHANNELS
-SHOW_PLOT = SETTINGS["show_plot"]                           # Show a plot after the measurement?
+from calibration_file import (CALIBRATION_DIR, HASH_METHOD, calibration_path, file_sha256,
+                              load_calibration, load_daq_input, write_json)
+from hotwire_model import validate_conversion, voltage_to_velocity as convert_voltage
+from settings_file import PROJECT_DIR, expand_channels, load_settings, settings_path
 
 
 # =============================================================================
@@ -92,34 +75,28 @@ def get_calibration(sensor_sn):
 
 
 def warn_if_outside_calibration(velocity, calibration):
-    """Warn if velocities are above the highest calibrated speed (those values are extrapolated)."""
+    """Warn about extrapolation below or above the calibrated speed range."""
     speed_range = (calibration.get("source_data") or {}).get("speed_range_m_per_s")
     if not speed_range:
         return
-    above = np.count_nonzero(velocity > speed_range[1])
-    if above > 0:
-        print(f"WARNING: {above} of {len(velocity)} samples ({100 * above / len(velocity):.0f} %) are above "
-              f"the highest calibrated speed ({speed_range[1]:g} m/s). These values are extrapolated.")
+    for direction, count, limit in (
+            ("below", np.count_nonzero(velocity < speed_range[0]), speed_range[0]),
+            ("above", np.count_nonzero(velocity > speed_range[1]), speed_range[1])):
+        if count:
+            print(f"WARNING: {count} of {np.size(velocity)} samples are {direction} the calibrated "
+                  f"speed limit ({limit:g} m/s). These values are extrapolated.")
 
 
-def expand_channels(channel_text):
-    """
-    Turn a channel string into a list of channel names.
-
-    Examples:
-        "ai1:3"     -> ["ai1", "ai2", "ai3"]
-        "ai1, ai4"  -> ["ai1", "ai4"]
-        "ai1"       -> ["ai1"]
-    """
-    channel_text = channel_text.strip()
-
-    if ":" in channel_text and "," not in channel_text:
-        prefix = "".join(c for c in channel_text if c.isalpha())   # e.g. "ai"
-        numbers = channel_text[len(prefix):]                         # e.g. "1:3"
-        first, last = [int(x) for x in numbers.split(":", 1)]
-        return [f"{prefix}{i}" for i in range(first, last + 1)]
-
-    return [name.strip() for name in channel_text.split(",") if name.strip()]
+def check_calibration_channel(calibration, channel):
+    """Require the same DAQ input and gain/offset that were used for fitting."""
+    fitted_channel = (calibration.get("source_data") or {}).get("voltage_column")
+    if fitted_channel != channel:
+        raise ValueError(f"This calibration was fitted for {fitted_channel!r}, but the selected hot-wire "
+                         f"channel is {channel!r}. Use the calibrated channel or fit a calibration for the new input.")
+    daq_input = load_daq_input(channel)
+    for name in ("m", "Uoffset"):
+        if not math.isclose(calibration["coefficients"][name], daq_input[name], rel_tol=1e-9, abs_tol=1e-9):
+            raise ValueError(f"The {channel} {name} has changed since calibration. Check daq_inputs.json and refit before recording.")
 
 
 def make_output_path(output_dir, sensor_sn, test_label):
@@ -136,13 +113,13 @@ def make_output_path(output_dir, sensor_sn, test_label):
 
     out_path = output_dir / f"{base_name}.csv"
     counter = 1
-    while out_path.exists():
+    while out_path.exists() or out_path.with_suffix(".metadata.json").exists():
         out_path = output_dir / f"{base_name}_{counter}.csv"
         counter += 1
     return out_path
 
 
-def record_samples(device, channels, measurement_time, sample_rate):
+def record_samples(device, channels, measurement_time, sample_rate, on_sample=None):
     """
     Read voltages from the DAQ for 'measurement_time' seconds.
 
@@ -154,48 +131,64 @@ def record_samples(device, channels, measurement_time, sample_rate):
         timestamps: list of date/time strings, one per sample
         voltages:   2D numpy array, one row per sample, one column per channel
         runtimes:   1D numpy array, seconds since the start of the measurement
+        outcome:    status (complete/stopped/failed), elapsed time and any DAQ error
+    on_sample(timestamp, voltages, runtime) writes each sample while recording.
     """
+    try:
+        import nidaqmx
+        from nidaqmx.constants import TerminalConfiguration
+    except ImportError:
+        raise RuntimeError("Recording needs nidaqmx: install requirements-daq.txt (see README.md).") from None
+    if not math.isfinite(sample_rate) or sample_rate <= 0 or not math.isfinite(measurement_time) or measurement_time <= 0:
+        raise ValueError("Measurement duration and sample rate must be finite numbers greater than zero.")
+    channel_names = expand_channels(channels)
+    physical_channels = ",".join(f"{device}/{name}" for name in channel_names)
     pause_between_samples = 1.0 / sample_rate
 
     timestamps = []
     voltages = []
     runtimes = []
 
-    with nidaqmx.Task() as task:
-        task.ai_channels.add_ai_voltage_chan(
-            f"{device}/{channels}",
-            terminal_config=TerminalConfiguration.RSE,
-            min_val=-10.0,
-            max_val=10.0,
-        )
-
-        print(f"Recording {device}/{channels} for {measurement_time} s ... (Ctrl+C to stop early)")
-        start = time.time()
-
-        try:
-            while time.time() - start < measurement_time:
-                value = task.read()          # float (1 channel) or list (several channels)
-                if isinstance(value, float):
-                    value = [value]
-
-                now = time.time()
-                timestamps.append(datetime.fromtimestamp(now).strftime("%Y:%m:%d:%H:%M:%S.%f")[:-2])
+    outcome = {"status": "complete"}
+    start = time.perf_counter()
+    try:
+        with nidaqmx.Task() as task:
+            task.ai_channels.add_ai_voltage_chan(
+                physical_channels, terminal_config=TerminalConfiguration.RSE,
+                min_val=-10.0, max_val=10.0)
+            print(f"Recording {physical_channels} for {measurement_time} s ... (Ctrl+C to stop early)")
+            start = time.perf_counter()
+            while time.perf_counter() - start < measurement_time:
+                value = np.atleast_1d(np.asarray(task.read(), dtype=float)).tolist()
+                if len(value) != len(channel_names):
+                    raise RuntimeError(f"DAQ returned {len(value)} values for {len(channel_names)} channels.")
+                runtime = time.perf_counter() - start
+                timestamp = datetime.now().strftime("%Y:%m:%d:%H:%M:%S.%f")[:-2]
+                if on_sample is not None:
+                    on_sample(timestamp, value, runtime)
+                timestamps.append(timestamp)
                 voltages.append(value)
-                runtimes.append(now - start)
-
+                runtimes.append(runtime)
                 time.sleep(pause_between_samples)
-        except KeyboardInterrupt:
-            print("\nMeasurement stopped by user. Saving the data recorded so far.")
+    except KeyboardInterrupt:
+        outcome["status"] = "stopped"
+        print("\nMeasurement stopped by user. Samples already written to CSV are kept.")
+    except nidaqmx.errors.Error as error:
+        outcome.update(status="failed", error=str(error))
+        print(f"\nDAQ error: {error}. Samples already written to CSV are kept.")
+    outcome["elapsed_time_s"] = time.perf_counter() - start
 
     if len(voltages) == 0:
-        raise RuntimeError("No samples were recorded.")
+        raise RuntimeError("No samples were recorded. " + outcome.get("error", "Check the driver and device in NI MAX."))
 
     runtimes = np.array(runtimes)
-    if runtimes[-1] > 0:
+    achieved_rate = (len(runtimes) - 1) / (runtimes[-1] - runtimes[0]) if len(runtimes) > 1 and runtimes[-1] > runtimes[0] else None
+    outcome["achieved_sample_rate_Hz"] = achieved_rate
+    if achieved_rate is not None:
         print(f"Recorded {len(runtimes)} samples in {runtimes[-1]:.1f} s "
-              f"(achieved rate = {len(runtimes) / runtimes[-1]:.0f} Hz)")
+              f"(achieved rate = {achieved_rate:.0f} Hz)")
 
-    return timestamps, np.array(voltages), runtimes
+    return timestamps, np.array(voltages), runtimes, outcome
 
 
 def voltage_to_velocity(u_measured, coeffs, fluid_temperature):
@@ -211,28 +204,11 @@ def voltage_to_velocity(u_measured, coeffs, fluid_temperature):
         v:     velocity [m/s]  (NaN where the formula has no real solution)
         ratio: u_bridge_squared / (Ts - Tf), saved in the CSV column "U_br^2/Ts-Tf"
     """
-    a = coeffs["a"]
-    b = coeffs["b"]
-    e = coeffs["e"]
-    m = coeffs["m"]
-    u_offset = coeffs["Uoffset"]
-    sensor_temperature = coeffs["Ts"]
-
-    if sensor_temperature == fluid_temperature:
-        raise ValueError("Sensor temperature Ts equals the fluid temperature: division by zero.")
-
-    u_bridge_squared = ((u_measured / m) + u_offset) ** 2
-    ratio = u_bridge_squared / (sensor_temperature - fluid_temperature)
-
-    # A negative number to a non-integer power gives NaN. Hide numpy's warning
-    # and report the number of NaN values ourselves instead.
-    with np.errstate(invalid="ignore"):
-        v = (a + b * ratio) ** e
-
-    n_invalid = np.count_nonzero(np.isnan(v))
+    v, ratio = convert_voltage(u_measured, coeffs, fluid_temperature)
+    n_invalid = np.count_nonzero(~np.isfinite(v))
     if n_invalid > 0:
-        print(f"WARNING: {n_invalid} of {len(v)} samples gave no valid velocity (NaN). "
-              f"This is normal at (almost) zero air speed.")
+        print(f"WARNING: {n_invalid} of {np.size(v)} samples gave no valid velocity (NaN). "
+              "Check raw voltage and the calibrated range; the formula can be invalid near zero flow.")
 
     return v, ratio
 
@@ -254,7 +230,7 @@ def save_csv(out_path, channel_names, timestamps, voltages, runtimes, velocity, 
     print(f"Saved {len(timestamps)} samples for {len(channel_names)} channel(s) to {out_path}")
 
 
-def plot_measurement(channel_names, voltages, runtimes, velocity):
+def plot_measurement(channel_names, voltages, runtimes, velocity, device):
     """Plot the raw voltage of every channel and the computed velocity over time."""
     plt.figure()
     for i, name in enumerate(channel_names):
@@ -263,7 +239,7 @@ def plot_measurement(channel_names, voltages, runtimes, velocity):
 
     plt.xlabel("Time (s)")
     plt.ylabel("Voltage (V) / Velocity (m/s)")
-    plt.title(f"{DEVICE}, {len(runtimes)} samples")
+    plt.title(f"{device}, {len(runtimes)} samples")
     plt.legend()
     plt.grid()
     plt.tight_layout()
@@ -275,30 +251,67 @@ def plot_measurement(channel_names, voltages, runtimes, velocity):
 # =============================================================================
 
 def main():
-    calibration = get_calibration(BRIDGE_SENSOR_SN)
+    settings = load_settings("read_hotwire")
+    calibration = get_calibration(settings["sensor"])
     coeffs = calibration["coefficients"]
-    channel_names = expand_channels(CHANNELS)
+    channel_names = expand_channels(settings["daq_channels"])
+    hotwire_index = settings["hotwire_channel_index"]
+    check_calibration_channel(calibration, channel_names[hotwire_index])
+    validate_conversion(coeffs, settings["air_temperature_C"])
+    print(f"Settings: {settings_path().name}")
+    print(f"Sensor: {settings['sensor']}; air temperature Tf = {settings['air_temperature_C']} C")
+    print("Timing is controlled by the computer; the achieved rate can be much lower than requested.")
+    out_path = make_output_path(PROJECT_DIR / settings["output_folder"], settings["sensor"], settings["test_label"])
+    metadata_path = out_path.with_suffix(".metadata.json")
+    metadata = {
+        "format_version": 1, "created": datetime.now().astimezone().isoformat(),
+        "csv_file": out_path.name, "settings_file": settings_path().name,
+        "settings": settings, "settings_sha256": file_sha256(settings_path()),
+        "calibration_file": f"sensor_coefficients/{settings['sensor']}.json",
+        "calibration_sha256": file_sha256(calibration_path(settings["sensor"])),
+        "calibration": calibration, "hotwire_channel": channel_names[hotwire_index],
+        "hash_method": HASH_METHOD, "script_sha256": file_sha256(__file__),
+        "model_script_sha256": file_sha256(Path(__file__).resolve().parent / "hotwire_model.py"),
+        "software": {"python": platform.python_version(), "numpy": np.__version__},
+        "status": "recording", "samples": 0,
+    }
+    write_json(metadata_path, metadata)
+    try:
+        with open(out_path, "x", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["Timestamp"] + channel_names + ["Runtime", "v", "U_br^2/Ts-Tf"])
+            f.flush()
 
-    if not 0 <= HOTWIRE_CHANNEL_INDEX < len(channel_names):
-        raise ValueError(f'"hotwire_channel_index" in user_settings.json is {HOTWIRE_CHANNEL_INDEX}, '
-                         f"but only {len(channel_names)} channel(s) are read: {channel_names}")
+            def write_sample(timestamp, values, runtime):
+                v, ratio = convert_voltage(values[hotwire_index], coeffs, settings["air_temperature_C"])
+                writer.writerow([timestamp] + values + [runtime, float(v), float(ratio)])
+                metadata["samples"] += 1
+                f.flush()
 
-    print(f"Sensor: {BRIDGE_SENSOR_SN}")
-    print(f"Fluid temperature Tf = {FLUID_TEMPERATURE} °C")
-
-    out_path = make_output_path(OUTPUT_DIR, BRIDGE_SENSOR_SN, TEST_LABEL)
-
-    timestamps, voltages, runtimes = record_samples(DEVICE, CHANNELS, MEASUREMENT_TIME, SAMPLE_RATE)
-
-    hotwire_voltage = voltages[:, HOTWIRE_CHANNEL_INDEX]
-    velocity, ratio = voltage_to_velocity(hotwire_voltage, coeffs, FLUID_TEMPERATURE)
+            timestamps, voltages, runtimes, outcome = record_samples(
+                settings["daq_device"], settings["daq_channels"], settings["measurement_time_s"],
+                settings["sample_rate_Hz"], on_sample=write_sample)
+        metadata.update(outcome)
+    except (Exception, KeyboardInterrupt) as error:
+        metadata.update(status="failed", error=str(error) or "Interrupted before recording finished.")
+        if out_path.exists():
+            metadata["csv_sha256"] = file_sha256(out_path)
+        write_json(metadata_path, metadata)
+        raise
+    metadata["csv_sha256"] = file_sha256(out_path)
+    write_json(metadata_path, metadata)
+    print(f"Saved {metadata['samples']} samples to {out_path}")
+    print(f"Saved settings and calibration to {metadata_path}")
+    if outcome["status"] == "failed":
+        raise RuntimeError("Acquisition failed. The partial CSV and metadata were saved; see the DAQ error above.")
+    velocity, _ = voltage_to_velocity(voltages[:, hotwire_index], coeffs, settings["air_temperature_C"])
     warn_if_outside_calibration(velocity, calibration)
-
-    save_csv(out_path, channel_names, timestamps, voltages, runtimes, velocity, ratio)
-
-    if SHOW_PLOT:
-        plot_measurement(channel_names, voltages, runtimes, velocity)
+    if settings["show_plot"]:
+        plot_measurement(channel_names, voltages, runtimes, velocity, settings["daq_device"])
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except (ValueError, RuntimeError, OSError) as error:
+        raise SystemExit(f"ERROR: {error}") from None

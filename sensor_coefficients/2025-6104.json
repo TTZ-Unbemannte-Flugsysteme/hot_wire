@@ -60,93 +60,103 @@
       3.21784,
       6.29275
     ],
-    "dataset_sha256": "39eb44a1fb5c592ab1a06634d2e435b43aa6619bfccfd5a36e20983249612230",
+    "dataset_sha256": "f8db71eaf0a43b1c93b368cea0794bbd61d8078fce03f0da516a6840c79b7f83",
     "files": [
       {
         "file": "calibration_data/2025-6104/20251125_101528_hotwire_measurement_windtunnel_0deg_aoa_2025-6104_10ms.csv",
         "speed_m_per_s": 10.0,
         "samples": 349,
-        "sha256": "386e52193934079ea00c2c4394d2d0ccd8dfb38581241c1a5b4507c2d6f34eba",
+        "sha256": "4c1081f57c56cf633e2c6161eb4b1c94f5327779f9b94f9265bc9684d689fe65",
         "voltage_mean_V": 4.26732,
         "voltage_std_V": 0.0036274,
         "voltage_min_V": 4.25815,
         "voltage_max_V": 4.27821,
         "first_timestamp": "2025:11:25:10:15:29.3398",
-        "duration_s": 10.0
+        "duration_s": 10.0,
+        "sha256_original_bytes": "386e52193934079ea00c2c4394d2d0ccd8dfb38581241c1a5b4507c2d6f34eba"
       },
       {
         "file": "calibration_data/2025-6104/20251125_101650_hotwire_measurement_windtunnel_0deg_aoa_2025-6104_15ms.csv",
         "speed_m_per_s": 15.0,
         "samples": 341,
-        "sha256": "ac2b74b9865a50e8a0deac81d25dada01856e114ce95bf9e7deefc43ba5a26f7",
+        "sha256": "0699781f61850af2d7f98de199d13d9e79cabf613200c9e45089ffbfbab15a21",
         "voltage_mean_V": 4.95699,
         "voltage_std_V": 0.00330303,
         "voltage_min_V": 4.94731,
         "voltage_max_V": 4.96507,
         "first_timestamp": "2025:11:25:10:16:50.7493",
-        "duration_s": 10.01
+        "duration_s": 10.01,
+        "sha256_original_bytes": "ac2b74b9865a50e8a0deac81d25dada01856e114ce95bf9e7deefc43ba5a26f7"
       },
       {
         "file": "calibration_data/2025-6104/20251125_101814_hotwire_measurement_windtunnel_0deg_aoa_2025-6104_20ms.csv",
         "speed_m_per_s": 20.0,
         "samples": 365,
-        "sha256": "ca4e3433e758778cf6b1863e534769e69472d279e95178b66b5af7dc875e1b23",
+        "sha256": "bb6f9ed62d1e3e74ba6ffd5561bbd2a65ff8363b17d5052117e374d201024691",
         "voltage_mean_V": 5.48622,
         "voltage_std_V": 0.00367235,
         "voltage_min_V": 5.47306,
         "voltage_max_V": 5.49673,
         "first_timestamp": "2025:11:25:10:18:15.7691",
-        "duration_s": 10.01
+        "duration_s": 10.01,
+        "sha256_original_bytes": "ca4e3433e758778cf6b1863e534769e69472d279e95178b66b5af7dc875e1b23"
       },
       {
         "file": "calibration_data/2025-6104/20251125_101938_hotwire_measurement_windtunnel_0deg_aoa_2025-6104_25ms.csv",
         "speed_m_per_s": 25.0,
         "samples": 351,
-        "sha256": "0462646540baab72a2e6923fa1d8d04b57ec87e7af55f4b8013d97efee27aa83",
+        "sha256": "0e25d55ca5dd4dafc1424ff7abdf782ee6a1f2edb38a4948eaf98044708bae17",
         "voltage_mean_V": 5.92026,
         "voltage_std_V": 0.00378847,
         "voltage_min_V": 5.91003,
         "voltage_max_V": 5.93075,
         "first_timestamp": "2025:11:25:10:19:39.2309",
-        "duration_s": 10.01
+        "duration_s": 10.01,
+        "sha256_original_bytes": "0462646540baab72a2e6923fa1d8d04b57ec87e7af55f4b8013d97efee27aa83"
       },
       {
         "file": "calibration_data/2025-6104/20251125_102146_hotwire_measurement_windtunnel_0deg_aoa_2025-6104_30ms.csv",
         "speed_m_per_s": 30.0,
         "samples": 341,
-        "sha256": "6aa090d2c0afd4dbcfd24095d47774b434d72e8ec7710c92a43b27d0ed7a60f4",
+        "sha256": "26960232543c78ef47f7473b1ca61501406cf448edcccd1ba8e3b64371f564ed",
         "voltage_mean_V": 6.27977,
         "voltage_std_V": 0.00426056,
         "voltage_min_V": 6.26776,
         "voltage_max_V": 6.29275,
         "first_timestamp": "2025:11:25:10:21:47.1209",
-        "duration_s": 10.02
+        "duration_s": 10.02,
+        "sha256_original_bytes": "6aa090d2c0afd4dbcfd24095d47774b434d72e8ec7710c92a43b27d0ed7a60f4"
       },
       {
         "file": "calibration_data/2025-6104/20251125_102346_hotwire_measurement_windtunnel_0deg_aoa_2025-6104_5ms.csv",
         "speed_m_per_s": 5.0,
         "samples": 341,
-        "sha256": "08b48860dad5c258b62a3ae8e15c40cbc26803caa9fc10915c13c33f33e56286",
+        "sha256": "4f2b781f4696a58ff38ea744fd1ec85e109b081e77e155aa80b32632ea34f06f",
         "voltage_mean_V": 3.22754,
         "voltage_std_V": 0.0037034,
         "voltage_min_V": 3.21784,
         "voltage_max_V": 3.23625,
         "first_timestamp": "2025:11:25:10:23:46.7001",
-        "duration_s": 10.02
+        "duration_s": 10.02,
+        "sha256_original_bytes": "08b48860dad5c258b62a3ae8e15c40cbc26803caa9fc10915c13c33f33e56286"
       }
     ],
     "other_sources": [
       {
         "file": "sensor_coefficients/daq_inputs.json",
-        "sha256": "1bd2da82786c9e7a1d8fafea090097034bbc578070dec6f5e1f71e639ac3ff48",
-        "used_for": "m and Uoffset of input ai1"
+        "sha256": "e7f8a6b3e2464a547eabf24a53fdc4c995abb7950af09aed52d34f4e8b91cd52",
+        "used_for": "m and Uoffset of input ai1",
+        "sha256_original_bytes": "1bd2da82786c9e7a1d8fafea090097034bbc578070dec6f5e1f71e639ac3ff48"
       },
       {
         "file": "docs/Hitzdraht_doku.pdf",
         "sha256": "3b8a5e3f788644f760558b0183344acb591fe5ac40ff6f8a07375648a7305a26",
         "used_for": "formula (section 6.5, eq. 2 and 3)"
       }
-    ]
+    ],
+    "hash_method": "sha256-lf-v1",
+    "hashes_normalized_on": "2026-10-13",
+    "dataset_sha256_original_bytes": "39eb44a1fb5c592ab1a06634d2e435b43aa6619bfccfd5a36e20983249612230"
   },
   "statistics": {
     "rmse_training_m_per_s": 0.0500916,
@@ -299,5 +309,7 @@
     "scipy": "1.18.1",
     "pandas": "3.0.6"
   },
-  "notes": []
+  "notes": [
+    "Source fingerprints were normalised to LF text line endings on 2026-10-13. Original byte fingerprints are retained. Coefficients, fit statistics and creation date are unchanged; the fit script hash identifies the historical script."
+  ]
 }
